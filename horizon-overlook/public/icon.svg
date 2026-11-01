@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="#0A0A0F"/>
+
+  <!-- Horizon line -->
+  <line x1="64" y1="256" x2="448" y2="256" stroke="#4ECDC4" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Compass rose -->
+  <g transform="translate(256, 256)">
+    <!-- N -->
+    <text x="0" y="-80" text-anchor="middle" dominant-baseline="middle" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" fill="#FFFFFF">N</text>
+    <!-- E -->
+    <text x="80" y="0" text-anchor="middle" dominant-baseline="middle" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" fill="#FFFFFF">E</text>
+    <!-- S -->
+    <text x="0" y="80" text-anchor="middle" dominant-baseline="middle" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" fill="#FFFFFF">S</text>
+    <!-- W -->
+    <text x="-80" y="0" text-anchor="middle" dominant-baseline="middle" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" fill="#FFFFFF">W</text>
+
+    <!-- Direction marker (pin) -->
+    <g transform="rotate(-30)">
+      <path d="M0,-120 L0,-80" stroke="#FF6B6B" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="0" cy="-120" r="16" fill="#FF6B6B"/>
+      <circle cx="0" cy="-120" r="8" fill="#FFFFFF"/>
+    </g>
+
+    <!-- Center dot -->
+    <circle cx="0" cy="0" r="6" fill="#4ECDC4"/>
+  </g>
+</svg>
