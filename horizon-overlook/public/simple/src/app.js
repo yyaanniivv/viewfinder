@@ -365,22 +365,25 @@ function handleCalibrate() {
 // Location Picker UI
 function showLocationPicker() {
   locationPickerOverlay.style.display = 'flex';
-  renderPickerLocationList();
+  renderPickerLocationSelect();
 }
 
 function hideLocationPicker() {
   locationPickerOverlay.style.display = 'none';
 }
 
-function renderPickerLocationList() {
-  if (!pickerLocationList) return;
+function renderPickerLocationSelect() {
+  const select = document.getElementById('picker-location-select');
+  const infoDiv = document.getElementById('picker-selected-info');
+  if (!select) return;
 
   if (locations.length === 0) {
-    pickerLocationList.innerHTML = '<p class="empty" style="text-align:center;color:var(--text-muted);padding:24px;">No locations. Tap "Manage Locations" to add some.</p>';
+    select.innerHTML = '<option value="">No locations. Tap "Manage Locations" to add some.</option>';
+    if (infoDiv) infoDiv.style.display = 'none';
     return;
   }
 
-  pickerLocationList.innerHTML = locations.map(loc => {
+  select.innerHTML = locations.map(loc => {
     let bearingStr = '—';
     let distanceStr = '—';
     if (userPosition && compassAlpha !== null) {
@@ -390,31 +393,31 @@ function renderPickerLocationList() {
       bearingStr = `${Math.round(relBearing)}°`;
       distanceStr = formatDistance(distance);
     }
-    return `
-      <div class="picker-location-item" data-id="${loc.id}">
-        <span class="picker-location-color" style="background: ${loc.color}"></span>
-        <div class="picker-location-details">
-          <span class="picker-location-name">${loc.name}</span>
-          <span class="picker-location-meta">
-            ${loc.type ? `<span class="picker-type-badge" style="background: ${loc.color}">${loc.type}</span>` : ''}
-            ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}
-            ${loc.alt !== undefined ? ` • ${loc.alt}m` : ''}
-          </span>
-        </div>
-        <div style="text-align:right;">
-          <div class="picker-location-bearing">${bearingStr}</div>
-          <div style="font-size:11px;color:var(--text-muted);">${distanceStr}</div>
-        </div>
-      </div>
-    `;
+    return `<option value="${loc.id}" data-bearing="${bearingStr}" data-distance="${distanceStr}" style="color: ${loc.color}">${loc.name} ${loc.type ? `(${loc.type})` : ''}</option>`;
   }).join('');
 
-  pickerLocationList.querySelectorAll('.picker-location-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const id = item.dataset.id;
-      selectLocationForTracking(id);
-    });
-  });
+  // Update selected info when selection changes
+  select.onchange = (e) => {
+    const option = e.target.selectedOptions[0];
+    if (option && option.value && infoDiv) {
+      const loc = locations.find(l => l.id === option.value);
+      if (loc) {
+        infoDiv.innerHTML = `
+          <strong>${loc.name}</strong>${loc.type ? ` <span style="font-size:11px;color:var(--accent);">(${loc.type})</span>` : ''}<br>
+          <span style="font-family:monospace;">${loc.lat.toFixed(6)}, ${loc.lon.toFixed(6)}${loc.alt !== undefined ? ` • ${loc.alt}m` : ''}</span><br>
+          <span style="color:var(--accent);">Bearing: ${option.dataset.bearing}</span> | <span style="color:var(--text-muted);">Distance: ${option.dataset.distance}</span>
+        `;
+        infoDiv.style.display = 'block';
+      }
+    } else if (infoDiv) {
+      infoDiv.style.display = 'none';
+    }
+  };
+
+  // Trigger onchange for first item
+  if (select.value) {
+    select.onchange({ target: select });
+  }
 }
 
 function selectLocationForTracking(id) {
@@ -437,10 +440,14 @@ function selectLocationForTracking(id) {
 }
 
 function setupLocationPickerEvents() {
+  const pickerSelectBtn = document.getElementById('picker-select-btn');
+  const pickerSelect = document.getElementById('picker-location-select');
+
   pickerCloseBtn?.addEventListener('click', hideLocationPicker);
-  pickerCalibrateBtn?.addEventListener('click', () => {
-    hideLocationPicker();
-    showCalibration();
+  pickerSelectBtn?.addEventListener('click', () => {
+    if (pickerSelect && pickerSelect.value) {
+      selectLocationForTracking(pickerSelect.value);
+    }
   });
   pickerManageBtn?.addEventListener('click', () => {
     hideLocationPicker();

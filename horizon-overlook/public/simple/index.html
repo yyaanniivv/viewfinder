@@ -52,13 +52,18 @@
         <h2>Select Location to Track</h2>
         <button id="picker-close-btn" class="picker-close" aria-label="Close">×</button>
       </div>
-      <p class="picker-instruction">Tap a location to center the AR view on it</p>
+      <p class="picker-instruction">Select a location to center the AR view on it</p>
 
-      <div id="picker-location-list" class="picker-location-list"></div>
+      <div class="picker-field">
+        <label for="picker-location-select">Location:</label>
+        <select id="picker-location-select"></select>
+      </div>
+
+      <div id="picker-selected-info" class="picker-selected-info" style="display: none;"></div>
 
       <div class="picker-actions">
-        <button id="picker-calibrate-btn" class="picker-btn secondary">Calibrate Compass</button>
-        <button id="picker-manage-btn" class="picker-btn primary">Manage Locations</button>
+        <button id="picker-select-btn" class="picker-btn primary">Track This Location</button>
+        <button id="picker-manage-btn" class="picker-btn secondary">Manage Locations</button>
       </div>
     </div>
   </div>
