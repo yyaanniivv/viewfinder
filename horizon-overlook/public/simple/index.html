@@ -33,7 +33,7 @@
     <div id="debug-content" class="debug-content"></div>
   </div>
 
-  <!-- Top bar: Compass + Status -->
+  <!-- Top bar: Compass + Status + Camera Toggle -->
   <div class="top-bar">
     <button id="compass-btn" class="compass-btn" aria-label="Select location to track">
       <canvas id="compass-canvas" width="200" height="200"></canvas>
@@ -43,6 +43,10 @@
       <div id="status-gps" class="warn">📍 GPS: —</div>
       <div id="status-compass" class="warn">🧭 Relative</div>
     </div>
+
+    <button id="camera-toggle-btn" class="camera-toggle-btn" aria-label="Toggle camera feed" title="Toggle camera">
+      📷
+    </button>
   </div>
 
   <!-- Location Picker Overlay (triggered by compass button) -->

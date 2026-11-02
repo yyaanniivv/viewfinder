@@ -30,9 +30,11 @@ const clearDebugBtn = document.getElementById('clear-debug-btn');
 // Location picker
 const locationPickerOverlay = document.getElementById('location-picker-overlay');
 const pickerCloseBtn = document.getElementById('picker-close-btn');
-const pickerCalibrateBtn = document.getElementById('picker-calibrate-btn');
+const pickerSelectBtn = document.getElementById('picker-select-btn');
 const pickerManageBtn = document.getElementById('picker-manage-btn');
-const pickerLocationList = document.getElementById('picker-location-list');
+const pickerLocationSelect = document.getElementById('picker-location-select');
+// Camera toggle
+const cameraToggleBtn = document.getElementById('camera-toggle-btn');
 
 // State
 let userPosition = null;
@@ -104,7 +106,7 @@ async function init() {
   // Start camera
   try {
     debug('Starting camera...');
-    await startCamera(video);
+    cameraStream = await startCamera(video);
     debug('Camera started successfully');
   } catch (err) {
     debug('Camera error: ' + err.message);
@@ -162,6 +164,9 @@ async function init() {
   compassBtn.addEventListener('click', () => showLocationPicker());
   setupCalibrationEvents();
   setupLocationPickerEvents();
+
+  // Camera toggle
+  cameraToggleBtn?.addEventListener('click', toggleCamera);
 
   // Panel minimize/maximize
   minimizeLocationsBtn?.addEventListener('click', () => {
@@ -255,6 +260,42 @@ function handleGPSUpdate(pos) {
 function handleGPSError(err) {
   debug(`GPS Error: ${err.message} (code: ${err.code})`);
   showError(`GPS Error: ${err.message}`);
+}
+
+let cameraStream = null;
+let cameraEnabled = true;
+
+async function toggleCamera() {
+  if (!cameraEnabled) {
+    // Turn camera ON
+    try {
+      debug('Starting camera...');
+      cameraStream = await startCamera(video);
+      video.style.display = 'block';
+      canvas.style.display = 'block';
+      cameraToggleBtn.textContent = '📷';
+      cameraToggleBtn.classList.remove('off');
+      cameraToggleBtn.title = 'Turn off camera';
+      cameraEnabled = true;
+      debug('Camera started');
+    } catch (err) {
+      debug('Camera error: ' + err.message);
+      showError(`Camera: ${err.message}`);
+    }
+  } else {
+    // Turn camera OFF
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      cameraStream = null;
+    }
+    video.style.display = 'none';
+    canvas.style.display = 'none';
+    cameraToggleBtn.textContent = '📷';
+    cameraToggleBtn.classList.add('off');
+    cameraToggleBtn.title = 'Turn on camera';
+    cameraEnabled = false;
+    debug('Camera stopped');
+  }
 }
 
 function updateStatus() {

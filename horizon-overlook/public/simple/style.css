@@ -130,6 +130,30 @@ input, select, button {
   border-color: rgba(255, 190, 11, 0.3);
 }
 
+/* Camera toggle button */
+.camera-toggle-btn {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.camera-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+.camera-toggle-btn.off {
+  background: rgba(255, 107, 107, 0.3);
+  border-color: rgba(255, 107, 107, 0.5);
+}
+
 /* Panel (bottom) */
 #locations-panel {
   position: fixed;
