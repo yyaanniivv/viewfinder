@@ -195,43 +195,6 @@
     </div>
   </div>
 
-  <!-- Calibration Overlay -->
-  <div id="calibration-overlay" class="overlay" style="display: none;">
-    <div class="cal-panel">
-      <h2>Compass Calibration</h2>
-      <p class="cal-instruction">Select a visible location, point phone at it, tap Calibrate</p>
-
-      <div class="cal-field">
-        <label>Visible Location:</label>
-        <select id="cal-location-select"></select>
-      </div>
-
-      <div class="cal-status">
-        <div class="cal-status-item">
-          <span class="cal-label">Compass</span>
-          <span id="cal-compass" class="cal-value">—</span>
-        </div>
-        <div class="cal-status-item">
-          <span class="cal-label">True Bearing</span>
-          <span id="cal-bearing" class="cal-value">—</span>
-        </div>
-        <div class="cal-status-item">
-          <span class="cal-label">GPS</span>
-          <span id="cal-gps" class="cal-value">Waiting...</span>
-        </div>
-      </div>
-
-      <div id="cal-result" class="cal-result" style="display: none;"></div>
-
-      <div class="cal-buttons">
-        <button id="cal-cancel-btn" class="cal-btn cancel">Cancel</button>
-        <button id="cal-calibrate-btn" class="cal-btn primary">Calibrate Now</button>
-      </div>
-
-      <button id="cal-close-btn" class="cal-close">×</button>
-    </div>
-  </div>
-
   <!-- Main app module -->
   <script type="module" src="src/app2.js"></script>
 </body>

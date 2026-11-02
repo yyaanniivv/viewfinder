@@ -16,7 +16,6 @@ export class Overlay {
     this.userPosition = options.userPosition || null;
     this.compassHeading = options.compassHeading || 0;
     this.headingOffset = options.headingOffset || 0;
-    this.isCalibrated = options.isCalibrated || false;
     this.horizonY = null;
     this.pxPerDeg = null;
     this.centerX = null;
@@ -41,7 +40,6 @@ export class Overlay {
     if (data.userPosition !== undefined) this.userPosition = data.userPosition;
     if (data.compassHeading !== undefined) this.compassHeading = data.compassHeading;
     if (data.headingOffset !== undefined) this.headingOffset = data.headingOffset;
-    if (data.isCalibrated !== undefined) this.isCalibrated = data.isCalibrated;
   }
 
   draw() {
@@ -59,11 +57,6 @@ export class Overlay {
 
     // Draw location markers
     this.drawMarkers(w);
-
-    // Draw calibration status
-    if (!this.isCalibrated) {
-      this.drawUncalibratedWarning(w);
-    }
   }
 
   drawHorizonLine(w) {
@@ -220,15 +213,6 @@ export class Overlay {
     ctx.textAlign = isLeft ? 'left' : 'right';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, isLeft ? x + arrowSize + 8 : x - arrowSize - 8, y);
-  }
-
-  drawUncalibratedWarning(w) {
-    const { ctx } = this;
-    ctx.font = '14px system-ui, sans-serif';
-    ctx.fillStyle = '#FFBE0B';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText('UNCALIBRATED - Tap compass to calibrate', w/2, 20);
   }
 
   calcBearingDistance(from, to) {

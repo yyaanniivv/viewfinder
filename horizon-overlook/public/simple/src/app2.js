@@ -8,7 +8,6 @@ import { startCamera } from './camera.js';
 import { startCompass } from './compass.js';
 import { startGPS } from './gps.js';
 import { getLocations, saveLocations, SAMPLE_LOCATIONS, createLocation, generateId, getNextColor, LOCATION_COLORS, LOCATION_TYPES, getTypeEmoji } from './storage.js';
-import { loadCalibration, saveCalibration, computeHeadingOffset, hasValidCalibration } from './calibration.js';
 import { normalizeBearing, formatDistance, deg2rad, rad2deg, EARTH_RADIUS_M } from './geo.js';
 
 // DOM Elements
@@ -16,7 +15,6 @@ const video = document.getElementById('camera');
 const canvas = document.getElementById('overlay');
 const currentLocationBtn = document.getElementById('current-location-btn');
 const locationsPanel = document.getElementById('locations-panel');
-const calibrationOverlay = document.getElementById('calibration-overlay');
 const statusGPS = document.getElementById('status-gps');
 const locationCountEl = document.getElementById('location-count');
 const debugPane = document.getElementById('debug-pane');
@@ -57,9 +55,7 @@ let gpsAccuracy = null;
 let compassAlpha = null;
 let compassAbsolute = false;
 let headingOffset = 0;
-let isCalibrated = false;
 let locations = [];
-let selectedCalibrationLocation = null;
 let overlay = null;
 let compassCanvas = null;
 let compassCtx = null;
@@ -101,21 +97,6 @@ async function init() {
     debug('Location list rendered');
   } catch (e) {
     debug('Location error: ' + e.message);
-  }
-
-  // Load calibration
-  try {
-    const cal = loadCalibration();
-    if (cal && hasValidCalibration()) {
-      headingOffset = cal.headingOffset;
-      isCalibrated = true;
-      debug('Calibration loaded: offset=' + headingOffset.toFixed(2));
-    } else {
-      debug('No valid calibration, will show calibration overlay');
-      showCalibration();
-    }
-  } catch (e) {
-    debug('Calibration error: ' + e.message);
   }
 
   // Start camera (default off - user toggles)
@@ -169,7 +150,6 @@ async function init() {
 
   // Event listeners
   currentLocationBtn?.addEventListener('click', () => showCurrentLocationOverlay());
-  setupCalibrationEvents();
   setupLocationPickerEvents();
   setupCurrentLocationEvents();
 
@@ -250,14 +230,13 @@ function animate() {
       userPosition,
       compassHeading: compassAlpha || 0,
       headingOffset,
-      isCalibrated,
     });
     overlay.draw();
   }
 
   // Draw compass
   if (compassCtx) {
-    drawCompass(compassAlpha || 0, isCalibrated);
+    drawCompass(compassAlpha || 0);
   }
 
   requestAnimationFrame(animate);
@@ -335,92 +314,6 @@ function showError(msg) {
   toast.textContent = msg;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 5000);
-}
-
-// Calibration UI
-function showCalibration() {
-  calibrationOverlay.style.display = 'flex';
-  renderCalibrationLocations();
-}
-
-function hideCalibration() {
-  calibrationOverlay.style.display = 'none';
-}
-
-function renderCalibrationLocations() {
-  const select = document.getElementById('cal-location-select');
-  if (!select) return;
-
-  select.innerHTML = locations.map(loc =>
-    `<option value="${loc.id}" style="color: ${loc.color}">${loc.name}</option>`
-  ).join('');
-
-  if (locations.length > 0) {
-    select.value = locations[0].id;
-    selectedCalibrationLocation = locations[0];
-  }
-}
-
-function setupCalibrationEvents() {
-  const select = document.getElementById('cal-location-select');
-  const calibrateBtn = document.getElementById('cal-calibrate-btn');
-  const cancelBtn = document.getElementById('cal-cancel-btn');
-  const closeBtn = document.getElementById('cal-close-btn');
-
-  select?.addEventListener('change', (e) => {
-    selectedCalibrationLocation = locations.find(l => l.id === e.target.value) || null;
-  });
-
-  calibrateBtn?.addEventListener('click', handleCalibrate);
-  cancelBtn?.addEventListener('click', hideCalibration);
-  closeBtn?.addEventListener('click', hideCalibration);
-}
-
-function handleCalibrate() {
-  if (!userPosition || compassAlpha === null || !selectedCalibrationLocation) {
-    alert('Need GPS, compass, and a selected location');
-    return;
-  }
-
-  calibrateBtn.disabled = true;
-  calibrateBtn.textContent = 'Calibrating...';
-
-  try {
-    const offset = computeHeadingOffset(compassAlpha, userPosition, selectedCalibrationLocation);
-    const now = Date.now();
-
-    const calData = {
-      headingOffset: offset,
-      calibratedAt: now,
-      landmarkName: selectedCalibrationLocation.name,
-      landmarkPosition: selectedCalibrationLocation,
-    };
-
-    saveCalibration(calData);
-    headingOffset = offset;
-    isCalibrated = true;
-
-    // Show result
-    const resultDiv = document.getElementById('cal-result');
-    resultDiv.innerHTML = `
-      <h4>✅ Calibrated!</h4>
-      <p>Offset: ${offset.toFixed(2)}°</p>
-      <p>Your position: ${userPosition.lat.toFixed(6)}, ${userPosition.lon.toFixed(6)}</p>
-      <p>Time: ${new Date(now).toLocaleTimeString()}</p>
-      <p>Landmark: ${selectedCalibrationLocation.name}</p>
-    `;
-    resultDiv.style.display = 'block';
-
-    setTimeout(() => {
-      hideCalibration();
-      calibrateBtn.disabled = false;
-      calibrateBtn.textContent = 'Calibrate Now';
-    }, 2000);
-  } catch (err) {
-    alert(`Calibration failed: ${err.message}`);
-    calibrateBtn.disabled = false;
-    calibrateBtn.textContent = 'Calibrate Now';
-  }
 }
 
 // Current Location Overlay
@@ -787,7 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Compass drawing function
-function drawCompass(heading, isCalibrated) {
+function drawCompass(heading) {
   if (!compassCtx || !compassCanvas) return;
 
   const { width, height } = compassCanvas;
@@ -806,7 +699,7 @@ function drawCompass(heading, isCalibrated) {
   // Outer ring
   compassCtx.beginPath();
   compassCtx.arc(0, 0, radius, 0, Math.PI * 2);
-  compassCtx.strokeStyle = isCalibrated ? '#FFFFFF' : '#FFBE0B';
+  compassCtx.strokeStyle = '#FFFFFF';
   compassCtx.lineWidth = 3;
   compassCtx.stroke();
 
@@ -851,7 +744,7 @@ function drawCompass(heading, isCalibrated) {
   // Center dot
   compassCtx.beginPath();
   compassCtx.arc(centerX, centerY, 3, 0, Math.PI * 2);
-  compassCtx.fillStyle = isCalibrated ? '#4ECDC4' : '#FFBE0B';
+  compassCtx.fillStyle = '#4ECDC4';
   compassCtx.fill();
 
   // Heading text
@@ -860,13 +753,4 @@ function drawCompass(heading, isCalibrated) {
   compassCtx.textAlign = 'center';
   compassCtx.textBaseline = 'top';
   compassCtx.fillText(`${Math.round(heading)}°`, centerX, centerY + radius + 6);
-
-  // Uncalibrated warning
-  if (!isCalibrated) {
-    compassCtx.font = '9px system-ui, sans-serif';
-    compassCtx.fillStyle = '#FFBE0B';
-    compassCtx.textAlign = 'center';
-    compassCtx.textBaseline = 'bottom';
-    compassCtx.fillText('UNCALIBRATED', centerX, centerY - radius - 6);
-  }
 }
