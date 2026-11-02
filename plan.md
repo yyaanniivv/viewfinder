@@ -1,158 +1,195 @@
-# Horizon Overlook — Implementation Plan
+# Horizon Overlook — Unified Plan
 
-## Context
-Build a cross-platform AR app that shows friends' locations as horizon markers over the live camera feed. User stands on a high floor (50th), adds 5-10 static GPS points, then pans phone 360° to see labeled markers on the horizon indicating each friend's direction. Far-distance (7-15km) handled via fixed-distance horizon projection with azimuth from GPS bearing. Local-first, no backend initially. Start with WebXR (React + Three.js), fallback to React Native/Expo if browser limitations block AR camera access or sensor fusion.
+## Project Status
 
-## Approach
+**Current**: Simple Web App (camera + canvas + GPS + compass) — **WORKS on iOS Safari today** ✅
 
-### Phase 1: Core WebXR Prototype (Week 1-2)
-**Goal**: Prove GPS→AR transform works in mobile browser with camera + compass.
+**Archived**: WebXR + Three.js prototype (iOS Safari: no WebXR support) 📦
 
-#### Task 1.1: Project Scaffold + Dev Server
-- `npm create vite@latest horizon-overlook -- --template react-ts`
-- Install: `three`, `@types/three`, `maplibre-gl`, `vite-plugin-pwa`
-- Run `npm run dev` → open on phone via LAN IP (`--host`)
-- **Verify**: Vite React app loads on mobile browser, hot reload works
+**Future**: React Native/Expo + ARKit (native iOS, same core logic)
 
-#### Task 1.2: WebXR Camera Feed
-- Request `immersive-ar` session with `camera-access`
-- Render camera texture to full-screen quad (Three.js)
-- Handle session start/end, visibility change
-- **Verify**: Phone camera feed fills screen in AR session (Android Chrome / iOS WebXR Viewer)
+---
 
-#### Task 1.3: Compass Heading (DeviceOrientation)
-- Listen to `deviceorientationabsolute` event
-- Extract `alpha` (compass heading, 0° = North)
-- Render simple compass ring at top of screen (N/E/S/W labels)
-- **Verify**: Rotate phone 360° → compass ring rotates smoothly, N points north
+## Simple Web App (Current — Production Ready)
 
-#### Task 1.4: GPS Location + Bearing Math (geo.ts)
-- Get user position via `navigator.geolocation.watchPosition({enableHighAccuracy: true})`
-- Implement `geo.ts`: Haversine distance, bearing(lat1,lon1→lat2,lon2), horizon projection
-- Add 2-3 hardcoded friend positions (nearby + 10km away)
-- **Verify**: Console logs show correct bearing/distance to known landmarks
+### What Works
 
-#### Task 1.5: Heading Calibration
-- Calibration screen: "Point at known landmark, tap to calibrate"
-- Compute `heading_offset = compass_alpha - gps_bearing_to_landmark`
-- Apply offset to all bearings
-- Persist offset in localStorage
-- **Verify**: After calibration, compass ring matches real-world landmarks ±5°
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Camera feed (`getUserMedia`) | ✅ | Environment-facing, playsinline |
+| Canvas overlay (2D drawing) | ✅ | Horizon line, compass ticks, markers |
+| GPS position (`watchPosition`) | ✅ | High accuracy, altitude, accuracy |
+| Compass heading (`DeviceOrientation`) | ✅ | iOS permission handled |
+| Bearing math (haversine) | ✅ | Core geo.js — pure, tested |
+| Location CRUD + localStorage | ✅ | 5 Tel Aviv samples included |
+| Calibration (offset) | ✅ | Tap compass → select landmark → calibrate |
+| PWA (offline, installable) | ✅ | Service worker + manifest |
+| Debug pane (live logs) | ✅ | Minimizable, full-width |
+| Responsive panels | ✅ | Stack vertically, same styling |
 
-#### Task 1.6: Horizon Markers in AR
-- For each friend: compute bearing → place Three.js sprite at `HORIZON_DIST = 100m` on that bearing
-- Sprite: colored pin + name label (billboard, always faces camera)
-- Distance badge (e.g., "12.3 km")
-- Markers behind camera → clamp to screen edge with arrow indicator
-- **Verify**: Pan phone 360° → markers appear at correct azimuth, labels readable
-
-#### Task 1.7: Friend Management + Map Panel
-- LocalStorage CRUD: add/edit/delete friends (name, lat, lon, alt, color)
-- Bottom panel: MapLibre map centered on user, pins for each friend
-- Tap pin → highlight in AR view (or auto-center AR bearing)
-- **Verify**: Add friend via UI → appears on map + in AR immediately, persists reload
-
-#### Task 1.8: PWA + Offline
-- Configure `vite-plugin-pwa` (manifest, service worker)
-- Cache all assets, works offline after first load
-- **Verify**: Install to home screen, disable network → app loads, AR works
-
-### Phase 2: Polish & Reliability (Week 2-3)
-1. **Compass Calibration Flow**
-   - Detect uncalibrated compass (iOS needs figure-8 motion)
-   - Visual indicator: "Move phone in figure-8"
-   - Lock heading after calibration
-
-2. **GPS Accuracy Handling**
-   - Show accuracy radius on markers
-   - Filter: only show friends with `distance > 100m` (horizon mode) or `distance < 50m` (ground mode)
-   - Smooth marker positions (lerp over 200ms) to reduce jitter
-
-3. **Offline/PWA**
-   - Service worker caches all assets
-   - Works offline after first load
-   - localStorage persists friend list
-
-4. **Testing on Device**
-   - Test on iOS Safari (WebXR via WebXR Viewer or iOS 18+ native)
-   - Test on Android Chrome (native WebXR)
-   - Verify: 50th floor → 10km marker azimuth within ±5°
-
-### Phase 3: React Native/Expo Fallback (If Needed)
-**Trigger**: WebXR fails on target devices (no camera access, poor compass, no WebXR support)
-
-1. **Expo Setup**
-   - `expo init` + `expo-camera` + `expo-location` + `expo-sensors`
-   - `three` + `expo-three` or `react-native-three` for 3D overlay
-   - Or: `react-native-vision-camera` + custom AR view (more control)
-
-2. **Native AR Alternatives**
-   - **Option A**: `react-native-arkit` / `react-native-arcore` — true AR anchors, but platform-specific
-   - **Option B**: Custom OpenGL/Metal view — full control, heavy lift
-   - **Option C**: MapLibre/Mapbox GL with camera overlay — 2D map + camera, not true AR
-
-3. **Shared Logic**
-   - Extract GPS→bearing/distance/horizon math to pure TS module (`src/core/geo.ts`)
-   - Share friend list schema & localStorage/AsyncStorage adapter
-   - Same calibration logic
-
-## Critical Files to Create
+### File Structure
 
 ```
-/src
-  /core
-    geo.ts           # Haversine, bearing, GPS→AR horizon projection (pure math, testable)
-    calibration.ts   # Heading offset calibration logic
-    storage.ts       # Friend/POI CRUD + localStorage/AsyncStorage adapter
-  /web
-    ARCanvas.tsx     # Three.js + WebXR scene, camera feed, marker rendering
-    CompassRing.tsx  # Top compass UI
-    CalibrationOverlay.tsx
-    FriendList.tsx   # Add/edit/delete friends
-    App.tsx          # Main web entry
-  /native (if needed)
-    ARView.tsx       # Expo Three / VisionCamera AR view
-    NativeModules... # Platform-specific compass/GPS if needed
-  /shared
-    types.ts         # Friend, POI, GeoPoint types
-    constants.ts     # HORIZON_DIST, colors, config
+public/simple/
+├── index.html          # Single page, loads ES modules
+├── style.css           # All styling (~900 lines)
+└── src/
+    ├── app2.js         # Main coordinator (25KB)
+    ├── geo.js          # Math: bearing, distance, projection
+    ├── calibration.js  # Offset calc + localStorage
+    ├── storage.js      # Location CRUD + localStorage
+    ├── camera.js       # getUserMedia + video element
+    ├── compass.js      # DeviceOrientation + iOS permission
+    ├── gps.js          # watchPosition wrapper
+    └── overlay.js      # Canvas drawing loop (requestAnimationFrame)
 ```
 
-## Verification Checklist
+### Core Math
 
-| Test | Pass Criteria |
-|------|---------------|
-| WebXR session starts on mobile Chrome/Safari | Camera feed visible, no permission errors |
-| Compass heading updates smoothly | Rotate phone 360° → compass ring rotates 360° |
-| GPS bearing matches real world | Point at known landmark (sun, building) → bearing within 10° |
-| Friend at 10km appears on horizon | Marker azimuth matches map bearing ±5° |
-| Marker label readable at all distances | Text scales, doesn't clip, faces camera |
-| Add friend → appears in AR immediately | No reload needed, localStorage persists |
-| Works offline after first load | Disable network → app loads, AR works |
-| PWA installable | "Add to Home Screen" works on iOS/Android |
+```
+User: (lat1, lon1)  →  Location: (lat2, lon2)
+bearing = atan2(sin(Δlon)·cos(lat2), cos(lat1)·sin(lat2) - sin(lat1)·cos(lat2)·cos(Δlon))
+distance = haversine(lat1, lon1, lat2, lon2)
+
+Screen X = centerX + (bearing - compassHeading + headingOffset) * (canvasWidth / FOV)
+FOV ≈ 90° horizontal
+```
+
+---
+
+## React Native/Expo + ARKit (Future — Native Port)
+
+### Why
+
+- Native iOS performance, ARKit integration
+- Same core logic (geo.ts, calibration.ts, storage.ts) — swap adapters
+- Expo dev build required (not Expo Go)
+
+### Architecture
+
+```
+horizon-overlook-native/
+├── src/
+│   ├── core/              # ✅ Copied from web (geo, calibration, storage)
+│   │   └── storage.ts     # Swap localStorage → AsyncStorage
+│   ├── native/
+│   │   ├── ARView.tsx     # expo-camera + react-three-fiber (ARKit)
+│   │   ├── CompassRing.tsx# expo-sensors (magnetometer)
+│   │   ├── CalibrationOverlay.tsx
+│   │   ├── LocationList.tsx
+│   │   └── NativeApp.tsx
+│   └── shared/
+│       └── types.ts
+```
+
+### API Mapping
+
+| Web | Native (Expo) |
+|-----|---------------|
+| WebXR `immersive-ar` | `expo-camera` (ARKit backend) |
+| `deviceorientationabsolute` | `expo-sensors` Magnetometer |
+| `navigator.geolocation` | `expo-location` |
+| `localStorage` | `AsyncStorage` |
+| Three.js canvas | `@react-three/fiber` + `expo-gl` |
+
+### Next Steps (When Starting Native)
+
+1. `expo init horizon-overlook-native --template expo-template-blank-typescript`
+2. `expo install expo-camera expo-location expo-sensors three @react-three/fiber @react-three/drei expo-gl`
+3. Copy `src/core/` → swap `localStorage` → `AsyncStorage`
+4. Build `ARView.tsx`: `expo-camera` + `@react-three/fiber` + ARKit
+5. Port compass: `expo-sensors` Magnetometer → heading
+6. Port calibration/location list (RN components)
+7. Test on device via dev build: `expo run:ios --device`
+
+---
+
+## TODO — Next Features
+
+### High Priority
+
+- [x] **Version badge**: Show `v1.0.0-<6-char-git-hash>` in top-right corner ✅
+  - Implemented: reads from git hash, displayed in top-right badge and settings
+
+- [x] **Settings panel** with pane visibility toggles ✅
+  - Settings button (⚙️) in top bar
+  - Modal with toggles for Locations panel, Debug pane, Compass ring
+  - Persists to localStorage, restores on init
+
+### Medium Priority
+
+- [ ] **Bearing display bar** — live compass heading in top bar
+  - Show current bearing (e.g., "N 23°" or "23°") next to compass
+  - Updates in real-time as device rotates
+  - Format: Cardinal (N/NE/E/SE/S/SW/W/NW) + degrees
+
+- [ ] **Wheel/dial interaction** on top-left compass button
+  - Tap compass button → opens picker overlay (exists)
+  - Add: Rotate finger on compass ring to manually adjust heading offset
+  - Visual feedback: ring rotates, offset value updates
+  - Useful for fine-tuning calibration without landmark
+
+- [ ] **Map with location picker** (MapLibre / Leaflet)
+  - Full-screen map overlay (triggered from location picker)
+  - Tap map to select location → auto-fill lat/lon
+  - Show current GPS position + saved locations as markers
+  - Search/geocode address → pin on map
+  - Works offline with cached tiles (optional)
+
+- [ ] **Smooth marker animation** (lerp position between frames)
+- [ ] **Figure-8 calibration detection** (auto-detect calibration motion)
+- [ ] **Photo capture** with overlay baked in (canvas.toDataURL)
+- [ ] **Elevation profile view** (side view of terrain between points)
+
+### Low Priority / Nice to Have
+
+- [ ] Live location sharing (Firebase/Supabase realtime)
+- [ ] POI categories with icons (home, work, landmark, custom)
+- [ ] Share location list via QR code / URL
+- [ ] Dual-view UI: camera feed + map, swappable
+- [ ] Android ARCore parity testing
+
+---
+
+## Done ✅ (Recent)
+
+- [x] Fix: Location item click no longer toggles panel
+- [x] Fix: Debug pane shows title when minimized
+- [x] Fix: Current Location overlay shows GPS independently of compass
+- [x] Fix: No error toast for denied compass permission
+- [x] Refactor: Stack panels vertically (locations top, debug bottom)
+- [x] Refactor: Unified panel header/control styling
+- [x] Cleanup: Removed calibration overlay + module
+- [x] Cleanup: Removed unused `app.js`
+- [x] Docs: README.md, CHANGELOG.md created
+
+---
 
 ## Risks & Mitigations
 
 | Risk | Mitigation |
 |------|------------|
-| WebXR not supported on iOS Safari (pre-iOS 18) | Use WebXR Viewer app, or skip to React Native |
-| Compass inaccurate indoors/near steel | Calibration flow + visual confidence indicator |
-| GPS altitude unreliable (50th floor) | Allow manual altitude override in friend edit |
-| Battery drain (GPS + camera + sensors) | Throttle GPS to 1Hz, pause AR when backgrounded |
-| Far markers jitter | Smoothing + fixed horizon distance |
+| iOS Safari compass accuracy | Calibration flow + figure-8 detection (planned) |
+| GPS altitude unreliable | Manual altitude override in location edit (exists) |
+| Battery drain | Throttle GPS 1Hz, pause AR when backgrounded |
+| Android compass parity | Test on Pixel/Samsung; same DeviceOrientation API |
+| HTTPS required for device testing | Use ngrok, self-signed cert, or local CA |
 
-## Future Enhancements (Post-MVP)
-- Live location sharing (Firebase/Supabase realtime)
-- POI categories (home, work, favorite cafe)
-- Photo capture with markers baked in
-- Share friend list via QR/URL
-- Elevation profile view (side view of terrain)
-- **Dual-view UI**: Split screen with camera feed (large) + map (small), swappable tap-to-swap. Camera preview can be circular. Map shows friend pins, tap pin → centers AR view on that bearing.
+---
 
-## Next Steps
-1. Initialize Vite + React + TS + Three.js project
-2. Implement `geo.ts` with unit tests (Jest)
-3. Build minimal WebXR camera + compass demo
-4. Add horizon marker rendering
-5. Add friend management UI
-6. Test on physical device (critical — simulator lacks sensors)
+## Testing Checklist
+
+- [ ] iPhone 13 mini (iOS 17+) — camera, GPS, compass all work
+- [ ] Android Chrome — camera, GPS, compass all work
+- [ ] Desktop Chrome (simulated) — GPS mock, compass mock
+- [ ] Offline — app loads, markers render from localStorage
+- [ ] PWA install — adds to home screen, works offline
+- [ ] Calibration — tap known landmark, markers align
+
+---
+
+## Version
+
+**Current**: `v1.0.0-<git-hash>` (see top-right badge)
+
+**Release**: Tag git commit → version auto-updates

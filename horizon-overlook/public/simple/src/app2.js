@@ -48,6 +48,15 @@ const locationPickerInstruction = document.getElementById('location-picker-instr
 const locationPickerSelectedInfo = document.getElementById('location-picker-selected-info');
 // Camera toggle
 const cameraToggleBtn = document.getElementById('camera-toggle-btn');
+// Settings (triggered by version badge)
+const settingsBtn = document.getElementById('version-badge');
+const settingsOverlay = document.getElementById('settings-overlay');
+const settingsCloseBtn = document.getElementById('settings-close-btn');
+const toggleLocationsPanel = document.getElementById('toggle-locations-panel');
+const toggleDebugPane = document.getElementById('toggle-debug-pane');
+const toggleCompass = document.getElementById('toggle-compass');
+const settingsVersion = document.getElementById('settings-version');
+const versionBadge = document.getElementById('version-badge');
 
 // State
 let userPosition = null;
@@ -219,6 +228,52 @@ async function init() {
     }
   });
 
+  // Settings
+  settingsBtn?.addEventListener('click', () => {
+    settingsOverlay.style.display = 'flex';
+    // Sync checkboxes with current state
+    toggleLocationsPanel.checked = locationsPanel.style.display !== 'none';
+    toggleDebugPane.checked = debugPane.style.display !== 'none';
+    toggleCompass.checked = currentLocationBtn.style.display !== 'none';
+  });
+  settingsCloseBtn?.addEventListener('click', () => {
+    settingsOverlay.style.display = 'none';
+  });
+
+  // Settings checkboxes
+  toggleLocationsPanel?.addEventListener('change', (e) => {
+    locationsPanel.style.display = e.target.checked ? 'flex' : 'none';
+    localStorage.setItem('horizon:showLocations', e.target.checked);
+  });
+  toggleDebugPane?.addEventListener('change', (e) => {
+    debugPane.style.display = e.target.checked ? 'flex' : 'none';
+    localStorage.setItem('horizon:showDebug', e.target.checked);
+  });
+  toggleCompass?.addEventListener('change', (e) => {
+    currentLocationBtn.style.display = e.target.checked ? 'flex' : 'none';
+    localStorage.setItem('horizon:showCompass', e.target.checked);
+  });
+
+  // Load saved visibility preferences
+  const showLocations = localStorage.getItem('horizon:showLocations');
+  if (showLocations !== null) {
+    const show = showLocations === 'true';
+    locationsPanel.style.display = show ? 'flex' : 'none';
+    toggleLocationsPanel.checked = show;
+  }
+  const showDebug = localStorage.getItem('horizon:showDebug');
+  if (showDebug !== null) {
+    const show = showDebug === 'true';
+    debugPane.style.display = show ? 'flex' : 'none';
+    toggleDebugPane.checked = show;
+  }
+  const showCompass = localStorage.getItem('horizon:showCompass');
+  if (showCompass !== null) {
+    const show = showCompass === 'true';
+    currentLocationBtn.style.display = show ? 'flex' : 'none';
+    toggleCompass.checked = show;
+  }
+
   debug('init() complete');
 }
 
@@ -246,6 +301,11 @@ function handleCompassUpdate(data) {
   compassAbsolute = data.absolute;
   debug(`Compass: alpha=${data.alpha.toFixed(1)}°, absolute=${data.absolute}`);
   updateStatus();
+  updateBearingDisplay();
+  // Update current location overlay if open
+  if (currentLocationOverlay.style.display === 'flex') {
+    updateCurrentLocationDisplay();
+  }
 }
 
 function handleGPSUpdate(pos) {
@@ -305,6 +365,26 @@ function updateStatus() {
     }
     statusGPS.className = gpsAccuracy && gpsAccuracy < 50 ? 'good' : 'warn';
   }
+}
+
+function updateBearingDisplay() {
+  const cardinalEl = document.getElementById('bearing-cardinal');
+  const degreesEl = document.getElementById('bearing-degrees');
+  if (!cardinalEl || !degreesEl) return;
+
+  if (compassAlpha === null) {
+    cardinalEl.textContent = '—';
+    degreesEl.textContent = '—°';
+    return;
+  }
+
+  const heading = compassAlpha;
+  const cardinals = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  const index = Math.round(heading / 22.5) % 16;
+  const cardinal = cardinals[index];
+
+  cardinalEl.textContent = cardinal;
+  degreesEl.textContent = `${Math.round(heading)}°`;
 }
 
 function showError(msg) {

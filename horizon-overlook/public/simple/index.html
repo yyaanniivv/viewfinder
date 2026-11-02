@@ -12,8 +12,8 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Version indicator -->
-  <div style="position: fixed; top: 8px; right: 8px; z-index: 9999; background: rgba(78,205,196,0.9); color: #000; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">SIMPLE v1</div>
+  <!-- Version indicator (click for settings) -->
+  <button id="version-badge" style="position: fixed; top: 8px; right: 8px; z-index: 9999; background: rgba(78,205,196,0.9); color: #000; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: ui-monospace, SFMono-Regular, monospace; border: none; cursor: pointer;">v1.0.0-8e53528</button>
   <!-- Camera feed -->
   <video id="camera" autoplay playsinline muted style="display: none;"></video>
 
@@ -29,6 +29,12 @@
       <canvas id="compass-canvas" width="200" height="200"></canvas>
     </button>
 
+    <!-- Bearing display - shows current heading -->
+    <div id="bearing-display" class="bearing-display" aria-label="Current heading">
+      <span id="bearing-cardinal" class="bearing-cardinal">—</span>
+      <span id="bearing-degrees" class="bearing-degrees">—°</span>
+    </div>
+
     <div class="status-indicators">
       <div id="status-gps" class="warn">📍 GPS: —</div>
     </div>
@@ -36,6 +42,46 @@
     <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
       📷
     </button>
+  </div>
+
+  <!-- Settings Overlay -->
+  <div id="settings-overlay" class="overlay" style="display: none;">
+    <div class="picker-panel" style="max-width: 320px;">
+      <div class="picker-header">
+        <h2>Settings</h2>
+        <button id="settings-close-btn" class="picker-close" aria-label="Close">×</button>
+      </div>
+
+      <div class="settings-section">
+        <h3>Panel Visibility</h3>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-locations-panel" checked>
+            <span>Locations Panel</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-debug-pane" checked>
+            <span>Debug Pane</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-compass" checked>
+            <span>Compass Ring</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>About</h3>
+        <div class="setting-row">
+          <span>Version</span>
+          <span id="settings-version" style="font-family: ui-monospace, SFMono-Regular, monospace; color: var(--text-dim);">v1.0.0-8e53528</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Current Location Overlay (triggered by top-left button) -->
