@@ -154,14 +154,14 @@ input, select, button {
   border-color: rgba(255, 107, 107, 0.5);
 }
 
-/* Bottom panel container - flex layout for locations (3/4) + debug (1/4) */
+/* Bottom panel container - stacked vertically (locations on top, debug below) */
 #bottom-panels {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   z-index: 20;
   pointer-events: none;
 }
@@ -170,14 +170,12 @@ input, select, button {
   pointer-events: auto;
 }
 
-/* Panel (bottom left - 3/4 width) */
+/* Panel (locations panel - top) */
 #locations-panel {
-  flex: 3;
-  min-width: 0;
+  width: 100%;
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  border-radius: 16px 0 0 0;
+  border-radius: 16px 16px 0 0;
   max-height: 70vh;
   overflow-y: auto;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
@@ -188,7 +186,7 @@ input, select, button {
 
 #locations-panel[data-state="minimized"] {
   max-height: 56px;
-  border-radius: 16px 0 0 0;
+  border-radius: 16px 16px 0 0;
 }
 
 #locations-panel[data-state="minimized"] .panel-content {
@@ -212,15 +210,14 @@ input, select, button {
   user-select: none;
 }
 
-/* Debug pane (bottom right - 1/4 width) */
+/* Debug pane (bottom) - same style as locations panel */
 .debug-pane {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
-  border-radius: 0 16px 0 0;
+  border-radius: 0 0 16px 16px;
   max-height: 35vh;
-  box-shadow: -4px -4px 20px rgba(0,0,0,0.3);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   display: flex;
   flex-direction: column;
   transition: max-height 0.3s ease, border-radius 0.3s ease;
@@ -228,11 +225,11 @@ input, select, button {
 
 .debug-pane[data-state="minimized"] {
   max-height: 56px;
-  border-radius: 0 16px 0 0;
+  border-radius: 0 0 16px 16px;
 }
 
 .debug-pane[data-state="minimized"] .debug-content,
-.debug-pane[data-state="minimized"] .debug-header h3 {
+.debug-pane[data-state="minimized"] .panel-header h3 {
   display: none;
 }
 
@@ -242,11 +239,6 @@ input, select, button {
 
 .debug-pane[data-state="minimized"] #minimize-debug-btn {
   display: none !important;
-}
-
-.debug-header h3 {
-  cursor: pointer;
-  user-select: none;
 }
 
 .debug-header {

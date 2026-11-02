@@ -646,6 +646,7 @@ function renderLocationList() {
   });
   list.querySelectorAll('.location-info').forEach(info => {
     info.addEventListener('click', (e) => {
+      e.stopPropagation();
       const id = e.currentTarget.closest('.location-item').dataset.id;
       selectLocation(id);
     });
