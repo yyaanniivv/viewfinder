@@ -7,14 +7,14 @@ import { Overlay } from './overlay.js';
 import { startCamera } from './camera.js';
 import { startCompass } from './compass.js';
 import { startGPS } from './gps.js';
-import { getLocations, saveLocations, SAMPLE_LOCATIONS, createLocation, generateId, getNextColor, LOCATION_COLORS } from './storage.js';
+import { getLocations, saveLocations, SAMPLE_LOCATIONS, createLocation, generateId, getNextColor, LOCATION_COLORS, LOCATION_TYPES, getTypeEmoji } from './storage.js';
 import { loadCalibration, saveCalibration, computeHeadingOffset, hasValidCalibration } from './calibration.js';
 import { normalizeBearing, formatDistance, deg2rad, rad2deg, EARTH_RADIUS_M } from './geo.js';
 
 // DOM Elements
 const video = document.getElementById('camera');
 const canvas = document.getElementById('overlay');
-const compassBtn = document.getElementById('compass-btn');
+const currentLocationBtn = document.getElementById('current-location-btn');
 const locationsPanel = document.getElementById('locations-panel');
 const calibrationOverlay = document.getElementById('calibration-overlay');
 const statusGPS = document.getElementById('status-gps');
@@ -27,12 +27,28 @@ const maximizeLocationsBtn = document.getElementById('maximize-locations-btn');
 const minimizeDebugBtn = document.getElementById('minimize-debug-btn');
 const maximizeDebugBtn = document.getElementById('maximize-debug-btn');
 const clearDebugBtn = document.getElementById('clear-debug-btn');
-// Location picker
+// Current Location Overlay
+const currentLocationOverlay = document.getElementById('current-location-overlay');
+const currentLocationCloseBtn = document.getElementById('current-location-close-btn');
+const currentLocationUseGpsBtn = document.getElementById('current-location-use-gps-btn');
+const currentLocationSetManualBtn = document.getElementById('current-location-set-manual-btn');
+const manualLat = document.getElementById('manual-lat');
+const manualLon = document.getElementById('manual-lon');
+const manualAlt = document.getElementById('manual-alt');
+const gpsLatEl = document.getElementById('gps-lat');
+const gpsLonEl = document.getElementById('gps-lon');
+const gpsAltEl = document.getElementById('gps-alt');
+const gpsAccEl = document.getElementById('gps-acc');
+const gpsCompassEl = document.getElementById('gps-compass');
+// Generic Location Picker (reused for add location, track location)
 const locationPickerOverlay = document.getElementById('location-picker-overlay');
-const pickerCloseBtn = document.getElementById('picker-close-btn');
-const pickerSelectBtn = document.getElementById('picker-select-btn');
-const pickerManageBtn = document.getElementById('picker-manage-btn');
-const pickerLocationSelect = document.getElementById('picker-location-select');
+const locationPickerCloseBtn = document.getElementById('location-picker-close-btn');
+const locationPickerSelectBtn = document.getElementById('location-picker-select-btn');
+const locationPickerCancelBtn = document.getElementById('location-picker-cancel-btn');
+const locationPickerSelect = document.getElementById('location-picker-select');
+const locationPickerTitle = document.getElementById('location-picker-title');
+const locationPickerInstruction = document.getElementById('location-picker-instruction');
+const locationPickerSelectedInfo = document.getElementById('location-picker-selected-info');
 // Camera toggle
 const cameraToggleBtn = document.getElementById('camera-toggle-btn');
 
@@ -161,9 +177,10 @@ async function init() {
   debug('Animation loop started');
 
   // Event listeners
-  compassBtn.addEventListener('click', () => showLocationPicker());
+  currentLocationBtn?.addEventListener('click', () => showCurrentLocationOverlay());
   setupCalibrationEvents();
   setupLocationPickerEvents();
+  setupCurrentLocationEvents();
 
   // Camera toggle
   cameraToggleBtn?.addEventListener('click', toggleCamera);
@@ -275,7 +292,7 @@ function handleGPSError(err) {
 }
 
 let cameraStream = null;
-let cameraEnabled = true;
+let cameraEnabled = false; // Default to off
 
 async function toggleCamera() {
   if (!cameraEnabled) {
@@ -312,12 +329,12 @@ async function toggleCamera() {
 
 function updateStatus() {
   if (statusGPS) {
-    statusGPS.textContent = `📍 GPS: ${gpsAccuracy ? `${Math.round(gpsAccuracy)}m` : '—'}`;
+    if (userPosition && gpsAccuracy !== null) {
+      statusGPS.textContent = `📍 ${userPosition.lat.toFixed(6)}, ${userPosition.lon.toFixed(6)} ±${Math.round(gpsAccuracy)}m`;
+    } else {
+      statusGPS.textContent = `📍 GPS: —`;
+    }
     statusGPS.className = gpsAccuracy && gpsAccuracy < 50 ? 'good' : 'warn';
-  }
-  if (statusCompass) {
-    statusCompass.textContent = `🧭 ${compassAbsolute ? 'Absolute' : 'Relative'}`;
-    statusCompass.className = compassAbsolute ? 'good' : 'warn';
   }
 }
 
@@ -492,7 +509,141 @@ function selectLocationForTracking(id) {
   }
 }
 
+// Current Location Overlay
+function showCurrentLocationOverlay() {
+  currentLocationOverlay.style.display = 'flex';
+  updateCurrentLocationDisplay();
+}
+
+function hideCurrentLocationOverlay() {
+  currentLocationOverlay.style.display = 'none';
+}
+
+function updateCurrentLocationDisplay() {
+  if (!userPosition || compassAlpha === null) {
+    gpsLatEl.textContent = 'Waiting for GPS...';
+    gpsLonEl.textContent = '—';
+    gpsAltEl.textContent = '—';
+    gpsAccEl.textContent = '—';
+    gpsCompassEl.textContent = '—';
+    return;
+  }
+  gpsLatEl.textContent = userPosition.lat.toFixed(6);
+  gpsLonEl.textContent = userPosition.lon.toFixed(6);
+  gpsAltEl.textContent = userPosition.alt !== undefined ? `${userPosition.alt.toFixed(1)}m` : '—';
+  gpsAccEl.textContent = `${Math.round(gpsAccuracy)}m`;
+  gpsCompassEl.textContent = `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`;
+}
+
+function setupCurrentLocationEvents() {
+  currentLocationCloseBtn?.addEventListener('click', hideCurrentLocationOverlay);
+  currentLocationUseGpsBtn?.addEventListener('click', () => {
+    // Just close - we're already using GPS
+    hideCurrentLocationOverlay();
+  });
+  currentLocationSetManualBtn?.addEventListener('click', () => {
+    const lat = parseFloat(manualLat.value);
+    const lon = parseFloat(manualLon.value);
+    const alt = manualAlt.value ? parseFloat(manualAlt.value) : undefined;
+
+    if (isNaN(lat) || isNaN(lon)) {
+      alert('Please enter valid coordinates');
+      return;
+    }
+
+    // Override user position with manual entry
+    userPosition = { lat, lon, alt };
+    gpsAccuracy = 0; // Manual has no accuracy
+    debug(`Manual location set: ${lat.toFixed(6)}, ${lon.toFixed(6)}${alt !== undefined ? `, ${alt}m` : ''}`);
+    updateStatus();
+    updateCurrentLocationDisplay();
+    hideCurrentLocationOverlay();
+  });
+}
+
+// Generic Location Picker (reusable for track location, add location)
+let locationPickerMode = 'track'; // 'track' or 'add'
+let locationPickerCallback = null;
+
+function showLocationPicker(mode, callback) {
+  locationPickerMode = mode;
+  locationPickerCallback = callback;
+  locationPickerOverlay.style.display = 'flex';
+
+  if (mode === 'track') {
+    locationPickerTitle.textContent = 'Select Location to Track';
+    locationPickerInstruction.textContent = 'Select a location to center the AR view on it';
+    locationPickerSelectBtn.textContent = 'Track This Location';
+  } else if (mode === 'add') {
+    locationPickerTitle.textContent = 'Select Location Reference';
+    locationPickerInstruction.textContent = 'Pick a nearby location as reference for new location';
+    locationPickerSelectBtn.textContent = 'Use This Location';
+  }
+
+  renderLocationPickerSelect();
+}
+
+function hideLocationPicker() {
+  locationPickerOverlay.style.display = 'none';
+  locationPickerCallback = null;
+}
+
+function renderLocationPickerSelect() {
+  const select = locationPickerSelect;
+  const infoDiv = locationPickerSelectedInfo;
+  if (!select) return;
+
+  if (locations.length === 0) {
+    select.innerHTML = '<option value="">No locations. Tap "Manage Locations" to add some.</option>';
+    if (infoDiv) infoDiv.style.display = 'none';
+    return;
+  }
+
+  select.innerHTML = locations.map(loc => {
+    let bearingStr = '—';
+    let distanceStr = '—';
+    if (userPosition && compassAlpha !== null) {
+      const { bearing: trueBearing, distance } = calcBearingDistance(userPosition, loc);
+      const calibratedBearing = normalizeBearing(trueBearing - headingOffset);
+      const relBearing = normalizeBearing(calibratedBearing - compassAlpha);
+      bearingStr = `${Math.round(relBearing)}°`;
+      distanceStr = formatDistance(distance);
+    }
+    return `<option value="${loc.id}" data-bearing="${bearingStr}" data-distance="${distanceStr}" style="color: ${loc.color}">${loc.name} ${loc.type ? `(${loc.type})` : ''}</option>`;
+  }).join('');
+
+  select.onchange = (e) => {
+    const option = e.target.selectedOptions[0];
+    if (option && option.value && infoDiv) {
+      const loc = locations.find(l => l.id === option.value);
+      if (loc) {
+        infoDiv.innerHTML = `
+          <strong>${loc.name}</strong>${loc.type ? ` <span style="font-size:11px;color:var(--accent);">(${loc.type})</span>` : ''}<br>
+          <span style="font-family:monospace;">${loc.lat.toFixed(6)}, ${loc.lon.toFixed(6)}${loc.alt !== undefined ? ` • ${loc.alt}m` : ''}</span><br>
+          <span style="color:var(--accent);">Bearing: ${option.dataset.bearing}</span> | <span style="color:var(--text-muted);">Distance: ${option.dataset.distance}</span>
+        `;
+        infoDiv.style.display = 'block';
+      }
+    } else if (infoDiv) {
+      infoDiv.style.display = 'none';
+    }
+  };
+
+  if (select.value) {
+    select.onchange({ target: select });
+  }
+}
+
 function setupLocationPickerEvents() {
+  locationPickerCloseBtn?.addEventListener('click', hideLocationPicker);
+  locationPickerCancelBtn?.addEventListener('click', hideLocationPicker);
+  locationPickerSelectBtn?.addEventListener('click', () => {
+    if (locationPickerSelect && locationPickerSelect.value && locationPickerCallback) {
+      locationPickerCallback(locationPickerSelect.value);
+      hideLocationPicker();
+    }
+  });
+}
   const pickerSelectBtn = document.getElementById('picker-select-btn');
   const pickerSelect = document.getElementById('picker-location-select');
 
@@ -553,7 +704,7 @@ function renderLocationList() {
         <div class="location-details">
           <span class="location-name">${loc.name}</span>
           <span class="location-meta">
-            ${loc.type ? `<span class="type-badge" style="background: ${loc.color}">${loc.type}</span>` : ''}
+            ${loc.type ? `<span class="type-emoji">${getTypeEmoji(loc.type)}</span>` : ''}
             ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}
             ${loc.alt !== undefined ? ` • ${loc.alt}m` : ''}
           </span>
