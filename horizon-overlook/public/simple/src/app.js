@@ -173,11 +173,13 @@ async function init() {
     locationsPanel.dataset.state = 'minimized';
     minimizeLocationsBtn.style.display = 'none';
     maximizeLocationsBtn.style.display = 'flex';
+    debugPane.classList.add('above-panel');
   });
   maximizeLocationsBtn?.addEventListener('click', () => {
     locationsPanel.dataset.state = 'maximized';
     maximizeLocationsBtn.style.display = 'none';
     minimizeLocationsBtn.style.display = 'flex';
+    debugPane.classList.remove('above-panel');
   });
 
   // Click on Locations title to toggle
@@ -187,10 +189,12 @@ async function init() {
       locationsPanel.dataset.state = 'maximized';
       maximizeLocationsBtn.style.display = 'none';
       minimizeLocationsBtn.style.display = 'flex';
+      debugPane.classList.remove('above-panel');
     } else {
       locationsPanel.dataset.state = 'minimized';
       minimizeLocationsBtn.style.display = 'none';
       maximizeLocationsBtn.style.display = 'flex';
+      debugPane.classList.add('above-panel');
     }
   });
 
@@ -199,11 +203,15 @@ async function init() {
     debugPane.dataset.state = 'minimized';
     minimizeDebugBtn.style.display = 'none';
     maximizeDebugBtn.style.display = 'flex';
+    if (locationsPanel.dataset.state === 'minimized') {
+      debugPane.classList.add('above-panel');
+    }
   });
   maximizeDebugBtn?.addEventListener('click', () => {
     debugPane.dataset.state = 'maximized';
     maximizeDebugBtn.style.display = 'none';
     minimizeDebugBtn.style.display = 'flex';
+    debugPane.classList.remove('above-panel');
   });
 
   // Click on Debug title to toggle
@@ -213,10 +221,14 @@ async function init() {
       debugPane.dataset.state = 'maximized';
       maximizeDebugBtn.style.display = 'none';
       minimizeDebugBtn.style.display = 'flex';
+      debugPane.classList.remove('above-panel');
     } else {
       debugPane.dataset.state = 'minimized';
       minimizeDebugBtn.style.display = 'none';
       maximizeDebugBtn.style.display = 'flex';
+      if (locationsPanel.dataset.state === 'minimized') {
+        debugPane.classList.add('above-panel');
+      }
     }
   });
 
