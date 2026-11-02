@@ -47,21 +47,21 @@ let overlay = null;
 let compassCanvas = null;
 let compassCtx = null;
 
+// Debug function (module scope so callbacks can use it)
+function debug(msg) {
+  console.log('[App]', msg);
+  if (debugContent) {
+    const timestamp = new Date().toLocaleTimeString();
+    const line = document.createElement('div');
+    line.textContent = `[${timestamp}] ${msg}`;
+    debugContent.appendChild(line);
+    debugContent.scrollTop = debugContent.scrollHeight;
+  }
+}
+
 // Initialize
 async function init() {
   console.log('[App] init() started');
-
-  // Debug function writes to debug pane
-  function debug(msg) {
-    console.log('[App]', msg);
-    if (debugContent) {
-      const timestamp = new Date().toLocaleTimeString();
-      const line = document.createElement('div');
-      line.textContent = `[${timestamp}] ${msg}`;
-      debugContent.appendChild(line);
-      debugContent.scrollTop = debugContent.scrollHeight;
-    }
-  }
 
   // Clear debug
   clearDebugBtn?.addEventListener('click', () => {
