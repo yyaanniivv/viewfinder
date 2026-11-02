@@ -110,7 +110,7 @@ async function init() {
     debug('Compass permission granted');
   } catch (err) {
     debug('Compass error: ' + err.message);
-    showError(`Compass: ${err.message}`);
+    // Don't show error toast - compass is optional, GPS works without it
   }
 
   // Start GPS
@@ -130,7 +130,6 @@ async function init() {
       userPosition: null,
       compassHeading: 0,
       headingOffset: 0,
-      isCalibrated: false,
     });
     debug('Overlay initialized');
   } catch (e) {
@@ -327,19 +326,23 @@ function hideCurrentLocationOverlay() {
 }
 
 function updateCurrentLocationDisplay() {
-  if (!userPosition || compassAlpha === null) {
+  if (!userPosition) {
     gpsLatEl.textContent = 'Waiting for GPS...';
     gpsLonEl.textContent = '—';
     gpsAltEl.textContent = '—';
     gpsAccEl.textContent = '—';
-    gpsCompassEl.textContent = '—';
+    gpsCompassEl.textContent = compassAlpha !== null
+      ? `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`
+      : 'Waiting for compass...';
     return;
   }
   gpsLatEl.textContent = userPosition.lat.toFixed(6);
   gpsLonEl.textContent = userPosition.lon.toFixed(6);
   gpsAltEl.textContent = userPosition.alt !== undefined ? `${userPosition.alt.toFixed(1)}m` : '—';
-  gpsAccEl.textContent = `${Math.round(gpsAccuracy)}m`;
-  gpsCompassEl.textContent = `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`;
+  gpsAccEl.textContent = gpsAccuracy !== null ? `${Math.round(gpsAccuracy)}m` : '—';
+  gpsCompassEl.textContent = compassAlpha !== null
+    ? `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`
+    : 'Waiting for compass...';
 }
 
 function setupCurrentLocationEvents() {
@@ -443,19 +446,11 @@ function selectLocationForTracking(id) {
   const loc = locations.find(l => l.id === id);
   if (!loc) return;
 
-  // Set as selected location for tracking
-  selectedCalibrationLocation = loc;
-
   // Show toast
   showLocationToast(loc);
 
   // Close picker
   hideLocationPicker();
-
-  // Auto-open calibration if not calibrated
-  if (!isCalibrated) {
-    setTimeout(() => showCalibration(), 500);
-  }
 }
 
 function setupLocationPickerEvents() {
