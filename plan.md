@@ -136,6 +136,16 @@ horizon-overlook-native/
   - Search/geocode address → pin on map
   - Works offline with cached tiles (optional)
 
+- [ ] **Copy/paste mechanism for location picker**
+  - Copy location data (lat/lon/alt/name) to clipboard as text/JSON
+  - Paste from clipboard into location picker / add location form
+  - Format: "Name, Lat, Lon, Alt" or JSON for easy sharing
+
+- [ ] **Camera settings** - default off (already implemented) + settings toggle
+  - Camera starts OFF by default (current behavior ✅)
+  - Add toggle in Settings panel: "Camera default state" (On/Off)
+  - Persist to localStorage, apply on init
+
 - [ ] **Smooth marker animation** (lerp position between frames)
 - [ ] **Figure-8 calibration detection** (auto-detect calibration motion)
 - [ ] **Photo capture** with overlay baked in (canvas.toDataURL)
