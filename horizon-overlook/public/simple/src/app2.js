@@ -37,6 +37,8 @@ const gpsLonEl = document.getElementById('gps-lon');
 const gpsAltEl = document.getElementById('gps-alt');
 const gpsAccEl = document.getElementById('gps-acc');
 const gpsCompassEl = document.getElementById('gps-compass');
+const gpsBearingRow = document.getElementById('gps-bearing-row');
+const gpsBearingEl = document.getElementById('gps-bearing');
 // Generic Location Picker (reused for add location, track location)
 const locationPickerOverlay = document.getElementById('location-picker-overlay');
 const locationPickerCloseBtn = document.getElementById('location-picker-close-btn');
@@ -65,6 +67,7 @@ let compassAlpha = null;
 let compassAbsolute = false;
 let headingOffset = 0;
 let locations = [];
+let trackedLocationId = null; // Currently tracked location
 let overlay = null;
 let compassCanvas = null;
 let compassCtx = null;
@@ -313,6 +316,10 @@ function handleGPSUpdate(pos) {
   gpsAccuracy = pos.accuracy;
   debug(`GPS: lat=${pos.lat.toFixed(6)}, lon=${pos.lon.toFixed(6)}, alt=${pos.alt}, accuracy=${pos.accuracy}m, timestamp=${new Date(pos.timestamp).toISOString()}`);
   updateStatus();
+  // Update current location overlay if open (distance changes)
+  if (currentLocationOverlay.style.display === 'flex') {
+    updateCurrentLocationDisplay();
+  }
 }
 
 function handleGPSError(err) {
@@ -414,6 +421,7 @@ function updateCurrentLocationDisplay() {
     gpsCompassEl.textContent = compassAlpha !== null
       ? `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`
       : 'Waiting for compass...';
+    if (gpsBearingRow) gpsBearingRow.style.display = 'none';
     return;
   }
   gpsLatEl.textContent = userPosition.lat.toFixed(6);
@@ -423,6 +431,25 @@ function updateCurrentLocationDisplay() {
   gpsCompassEl.textContent = compassAlpha !== null
     ? `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`
     : 'Waiting for compass...';
+
+  // Bearing to tracked location
+  if (trackedLocationId && compassAlpha !== null) {
+    const targetLoc = locations.find(l => l.id === trackedLocationId);
+    if (targetLoc) {
+      const { bearing: trueBearing, distance } = calcBearingDistance(userPosition, targetLoc);
+      const calibratedBearing = normalizeBearing(trueBearing - headingOffset);
+      const relBearing = normalizeBearing(calibratedBearing - compassAlpha);
+      const cardinals = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+      const cardIndex = Math.round(relBearing / 22.5) % 16;
+      const cardinal = cardinals[cardIndex < 0 ? cardIndex + 16 : cardIndex];
+      gpsBearingEl.textContent = `${cardinal} ${Math.round(relBearing)}° • ${formatDistance(distance)}`;
+      gpsBearingRow.style.display = 'grid';
+    } else {
+      gpsBearingRow.style.display = 'none';
+    }
+  } else {
+    gpsBearingRow.style.display = 'none';
+  }
 }
 
 function setupCurrentLocationEvents() {
@@ -526,11 +553,18 @@ function selectLocationForTracking(id) {
   const loc = locations.find(l => l.id === id);
   if (!loc) return;
 
+  trackedLocationId = loc.id;
+
   // Show toast
   showLocationToast(loc);
 
   // Close picker
   hideLocationPicker();
+
+  // Update current location overlay if open
+  if (currentLocationOverlay.style.display === 'flex') {
+    updateCurrentLocationDisplay();
+  }
 }
 
 function setupLocationPickerEvents() {

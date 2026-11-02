@@ -151,6 +151,13 @@ horizon-overlook-native/
 - [ ] **Photo capture** with overlay baked in (canvas.toDataURL)
 - [ ] **Elevation profile view** (side view of terrain between points)
 
+- [ ] **Phone level indicator** (like camera level)
+  - Show pitch/roll from DeviceOrientation (beta/gamma)
+  - Visual: horizontal line with two side dashes `|---|`
+  - Green when level (|pitch| < 2° and |roll| < 2°), amber when slightly off, red when crooked
+  - Display in top bar or overlay, updates in real-time
+  - Helps user hold phone level for accurate compass/bearing
+
 ### Low Priority / Nice to Have
 
 - [ ] Live location sharing (Firebase/Supabase realtime)
