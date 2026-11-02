@@ -228,8 +228,7 @@ input, select, button {
   border-radius: 0 0 16px 16px;
 }
 
-.debug-pane[data-state="minimized"] .debug-content,
-.debug-pane[data-state="minimized"] .panel-header h3 {
+.debug-pane[data-state="minimized"] .debug-content {
   display: none;
 }
 
