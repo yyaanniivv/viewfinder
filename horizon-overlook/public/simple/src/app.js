@@ -125,8 +125,10 @@ async function init() {
   // Start GPS
   try {
     debug('Starting GPS...');
-    startGPS(handleGPSUpdate, handleGPSError);
-    debug('GPS watch started');
+    const gps = startGPS(handleGPSUpdate, handleGPSError);
+    debug('GPS watch started, watchId returned');
+    // Store reference so we can stop it later if needed
+    window.__gpsWatch = gps;
   } catch (err) {
     debug('GPS error: ' + err.message);
   }
@@ -246,12 +248,13 @@ function handleCompassUpdate(data) {
 function handleGPSUpdate(pos) {
   userPosition = { lat: pos.lat, lon: pos.lon, alt: pos.alt };
   gpsAccuracy = pos.accuracy;
-  debug(`GPS: lat=${pos.lat.toFixed(6)}, lon=${pos.lon.toFixed(6)}, accuracy=${pos.accuracy}m`);
+  debug(`GPS: lat=${pos.lat.toFixed(6)}, lon=${pos.lon.toFixed(6)}, alt=${pos.alt}, accuracy=${pos.accuracy}m, timestamp=${new Date(pos.timestamp).toISOString()}`);
   updateStatus();
 }
 
 function handleGPSError(err) {
-  showError(err);
+  debug(`GPS Error: ${err.message} (code: ${err.code})`);
+  showError(`GPS Error: ${err.message}`);
 }
 
 function updateStatus() {
