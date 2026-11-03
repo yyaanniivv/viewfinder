@@ -18,6 +18,7 @@
 |---------|--------|-------|
 | Camera feed (`getUserMedia`) | ✅ | Environment-facing, playsinline |
 | Canvas overlay (2D drawing) | ✅ | Horizon line, compass ticks, markers |
+| Horizon markers | ✅ | Triangle ticks at horizon line; name+distance boxes below, staggered rows to avoid overlap |
 | GPS position (`watchPosition`) | ✅ | High accuracy, altitude, accuracy |
 | Compass heading (`DeviceOrientation`) | ✅ | iOS permission handled |
 | Bearing math (haversine) | ✅ | Core geo.js — pure, tested |
@@ -98,6 +99,11 @@ viewfinder/
 
 ## Done ✅ (Recent)
 
+- [x] Fix: calibration button stuck on "Calibrating..." when reopening during the 2s window (state reset on open)
+- [x] Fix: calibration overlay no longer auto-opens on first load — it blocked the camera toggle and GPS pill; canvas shows "UNCALIBRATED — Tap compass" instead
+- [x] Fix: POI markers redesigned — triangle tick at horizon + name•distance boxes below with width-aware stagger (no more overlap with level gauge or each other)
+- [x] Fix: compact GPS pill (±20m; coords in tooltip/copy) — camera button no longer pushed off-screen on mobile
+- [x] Removed redundant 🧭 Relative/Absolute pill from top bar (info lives in calibration + current-location overlays)
 - [x] GPS refresh rate setting (1-20s, default 10s) — throttle + live-apply
 - [x] Level indicator moved to wide centered gauge on overlay (below horizon)
 - [x] Overlay canvas always visible (level gauge works without camera)

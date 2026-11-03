@@ -69,7 +69,6 @@ const gpsRateSlider = document.getElementById('gps-rate');
 const gpsRateValue = document.getElementById('gps-rate-value');
 // Calibration overlay
 const calibrationOverlay = document.getElementById('calibration-overlay');
-const statusCompassEl = document.getElementById('status-compass');
 
 // Compass dial interaction state
 let compassDialActive = false;
@@ -615,10 +614,10 @@ async function init() {
     });
   }
 
-  // Show calibration on first use (no valid calibration)
-  if (!isCalibrated) {
-    showCalibration();
-  }
+  // Don't auto-open calibration on first use — the overlay covers the
+  // whole screen and blocks the camera toggle / GPS pill. The canvas
+  // shows "UNCALIBRATED — Tap compass to calibrate" instead, and the
+  // user opens calibration via the compass button when ready.
 
   debug('init() complete');
 }
@@ -736,22 +735,15 @@ async function toggleCamera() {
 function updateStatus() {
   if (statusGPS) {
     if (userPosition && gpsAccuracy !== null) {
-      statusGPS.textContent = `📍 ${userPosition.lat.toFixed(6)}, ${userPosition.lon.toFixed(6)} ±${Math.round(gpsAccuracy)}m`;
+      // Compact: accuracy only — full coords live in the tooltip,
+      // the Current Location overlay, and click-to-copy
+      statusGPS.textContent = `📍 ±${Math.round(gpsAccuracy)}m`;
+      statusGPS.title = `${userPosition.lat.toFixed(6)}, ${userPosition.lon.toFixed(6)} — click to copy`;
     } else {
       statusGPS.textContent = `📍 GPS: —`;
+      statusGPS.title = 'Click to copy coordinates';
     }
     statusGPS.className = gpsAccuracy && gpsAccuracy < 50 ? 'good' : 'warn';
-  }
-
-  // Update compass status
-  if (statusCompassEl) {
-    if (compassAlpha !== null) {
-      statusCompassEl.textContent = `🧭 ${compassAbsolute ? 'Absolute' : 'Relative'}`;
-      statusCompassEl.className = compassAbsolute ? 'good' : 'warn';
-    } else {
-      statusCompassEl.textContent = `🧭 —`;
-      statusCompassEl.className = 'warn';
-    }
   }
 
   // Update level indicator (text status) — hidden when the overlay gauge is active
@@ -800,6 +792,18 @@ function showError(msg) {
 // Calibration UI (landmark-based, from Viewfinder)
 function showCalibration() {
   calibrationOverlay.style.display = 'flex';
+  // Reset button/result state so a reopen during the "Calibrating..." window
+  // (or after an error) never shows stale state
+  const calibrateBtn = document.getElementById('cal-calibrate-btn');
+  if (calibrateBtn) {
+    calibrateBtn.disabled = false;
+    calibrateBtn.textContent = 'Calibrate Now';
+  }
+  const resultDiv = document.getElementById('cal-result');
+  if (resultDiv) {
+    resultDiv.style.display = 'none';
+    resultDiv.innerHTML = '';
+  }
   renderCalibrationLocations();
   updateCalibrationDisplay();
 }
@@ -899,7 +903,10 @@ function handleCalibrate() {
     resultDiv.style.display = 'block';
 
     setTimeout(() => {
-      hideCalibration();
+      // Only auto-close if the overlay is still open on this calibration
+      if (calibrationOverlay.style.display === 'flex') {
+        hideCalibration();
+      }
       calibrateBtn.disabled = false;
       calibrateBtn.textContent = 'Calibrate Now';
     }, 2000);

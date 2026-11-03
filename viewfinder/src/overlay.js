@@ -221,6 +221,9 @@ export class Overlay {
 
     const { ctx } = this;
 
+    // First pass: compute screen positions of visible markers so we can
+    // stagger labels that would overlap
+    const visible = [];
     this.locations.forEach(loc => {
       const trueBearing = bearing(this.userPosition, loc);
       const distance = haversineDistance(this.userPosition, loc);
@@ -239,65 +242,101 @@ export class Overlay {
       const isBehind = Math.abs(relBearing) > FOV_DEG / 2;
 
       if (isOnScreen && !isBehind) {
-        this.drawMarker(screenX, this.horizonY, loc, distance, relBearing);
+        visible.push({ loc, screenX, distance, relBearing });
       } else if (isOnScreen && isBehind) {
         // Draw at edge with arrow indicator
         this.drawEdgeMarker(screenX < 0 ? 20 : w - 20, this.horizonY, loc, distance, screenX < 0);
       }
     });
+
+    // Sort by screen X and assign label rows: two markers whose label boxes
+    // would overlap share the horizon, so push the later one's label a row
+    // further down (rows stack downward, away from the compass ticks).
+    const LABEL_GAP = 10; // px min horizontal gap between boxes in a row
+    const sorted = [...visible].sort((a, b) => a.screenX - b.screenX);
+    // Pre-measure each label box width so row assignment is accurate
+    const { ctx: measureCtx } = this;
+    for (const m of sorted) {
+      measureCtx.font = 'bold 12px system-ui, sans-serif';
+      const textWidth = measureCtx.measureText(`${m.loc.name} • ${formatDistance(m.distance)}`).width;
+      measureCtx.font = '10px ui-monospace, monospace';
+      const bearingWidth = measureCtx.measureText(`${Math.round(m.relBearing)}°`).width;
+      m.boxW = textWidth + bearingWidth + 8 * 3; // padding*3 (matches drawMarker)
+    }
+    const rowRightEdge = []; // each row: rightmost box edge used
+    for (const m of sorted) {
+      let row = 0;
+      const boxLeft = m.screenX - m.boxW / 2;
+      while (rowRightEdge[row] !== undefined && boxLeft - rowRightEdge[row] < LABEL_GAP) {
+        row++;
+      }
+      rowRightEdge[row] = m.screenX + m.boxW / 2;
+      m.labelRow = row;
+    }
+
+    visible.forEach(m => {
+      this.drawMarker(m.screenX, this.horizonY, m.loc, m.distance, m.relBearing, m.labelRow || 0);
+    });
   }
 
-  drawMarker(x, y, loc, distance, relBearing) {
+  /**
+   * POI marker: tick + pointer triangle at the horizon line (like N/E/S/W
+   * compass ticks), with a single label box BELOW the line holding
+   * "name • distance". Overlapping POIs stagger downward (rows).
+   */
+  drawMarker(x, y, loc, distance, relBearing, labelRow = 0) {
     const { ctx } = this;
-    const pinRadius = 12;
-    const labelOffset = 25;
+    const TRI_H = 10;        // triangle height below line
+    const TRI_W = 12;
 
-    // Pin body (circle)
+    // Pointer triangle pointing down at the horizon line
     ctx.beginPath();
-    ctx.arc(x, y - labelOffset, pinRadius, 0, Math.PI * 2);
-    ctx.fillStyle = loc.color;
-    ctx.fill();
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Pin point (triangle down)
-    ctx.beginPath();
-    ctx.moveTo(x, y - labelOffset + pinRadius);
-    ctx.lineTo(x - 6, y - labelOffset + pinRadius + 10);
-    ctx.lineTo(x + 6, y - labelOffset + pinRadius + 10);
+    ctx.moveTo(x, y + TRI_H);
+    ctx.lineTo(x - TRI_W / 2, y);
+    ctx.lineTo(x + TRI_W / 2, y);
     ctx.closePath();
     ctx.fillStyle = loc.color;
     ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
-    // White inner dot
-    ctx.beginPath();
-    ctx.arc(x, y - labelOffset, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fill();
-
-    // Label background
+    // Single label box below the line: name • distance
     const distStr = formatDistance(distance);
     const label = `${loc.name} • ${distStr}`;
-    ctx.font = 'bold 13px system-ui, sans-serif';
+    ctx.font = 'bold 12px system-ui, sans-serif';
     const textWidth = ctx.measureText(label).width;
+    const bearingStr = `${Math.round(relBearing)}°`;
+    ctx.font = '10px ui-monospace, monospace';
+    const bearingWidth = ctx.measureText(bearingStr).width;
     const padding = 8;
+    const boxH = 20;
+    const boxW = textWidth + bearingWidth + padding * 3;
+    const rowGap = 26;
+    const boxY = y + TRI_H + 6 + labelRow * rowGap;
+    const boxX = x - boxW / 2;
 
+    // Box background
     ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-    this.roundRect(ctx, x - textWidth/2 - padding, y - labelOffset - 30, textWidth + padding*2, 20, 6);
+    this.roundRect(ctx, boxX, boxY, boxW, boxH, 6);
     ctx.fill();
 
-    // Label text
-    ctx.fillStyle = '#FFFFFF';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, x, y - labelOffset - 20);
+    // Color strip on the left edge
+    ctx.fillStyle = loc.color;
+    this.roundRect(ctx, boxX, boxY, 4, boxH, 2);
+    ctx.fill();
 
-    // Bearing indicator (small)
-    ctx.font = '11px system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    const bearingStr = `${Math.round(relBearing)}°`;
-    ctx.fillText(bearingStr, x, y - labelOffset - 45);
+    // Name • distance (bold, centered in remaining space)
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, boxX + padding + 4, boxY + boxH / 2 + 1);
+
+    // Bearing readout, right-aligned in the box
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fillText(bearingStr, boxX + boxW - padding - bearingWidth, boxY + boxH / 2 + 1);
   }
 
   drawEdgeMarker(x, y, loc, distance, isLeft) {
