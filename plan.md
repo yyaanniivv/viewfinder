@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Current**: Simple Web App (camera + canvas + GPS + compass) — **WORKS on iOS Safari today** ✅
+**Current**: React Web App + Simple Web App (both work on iOS Safari) ✅
 
 **Archived**: WebXR + Three.js prototype (iOS Safari: no WebXR support) 📦
 
@@ -10,7 +10,52 @@
 
 ---
 
-## Simple Web App (Current — Production Ready)
+## React Web App (Production Ready)
+
+### What Works
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Camera feed (`getUserMedia`) | ✅ | Environment-facing, playsinline |
+| Canvas overlay (2D drawing) | ✅ | Horizon line, compass ticks, markers |
+| GPS position (`watchPosition`) | ✅ | High accuracy, altitude, accuracy |
+| Compass heading (`DeviceOrientation`) | ✅ | iOS permission handled |
+| Bearing math (haversine) | ✅ | Core geo.ts — pure, tested |
+| Location CRUD + localStorage | ✅ | 5 Tel Aviv samples included |
+| Calibration (offset) | ✅ | Tap compass → select landmark → calibrate |
+| PWA (offline, installable) | ✅ | Service worker + manifest |
+| Settings panel | ✅ | Pane visibility, version badge |
+| Calibration result display | ✅ | Offset, user lat/lon, timestamp, landmark, true bearing |
+| Interactive CompassRing | ✅ | Tap to calibrate when uncalibrated |
+| Auto-minimize location panel | ✅ | Collapses on location selection |
+
+### File Structure
+
+```
+horizon-overlook/
+├── public/
+│   ├── index.html
+│   ├── manifest.json
+│   └── sw.js (service worker)
+├── src/
+│   ├── core/
+│   │   ├── geo.ts          # Math: bearing, distance, projection
+│   │   ├── calibration.ts  # Offset calc + localStorage
+│   │   └── storage.ts      # Location CRUD + localStorage
+│   ├── web/
+│   │   ├── App.tsx         # Main coordinator
+│   │   ├── ARCanvas.tsx    # Canvas overlay rendering
+│   │   ├── CompassRing.tsx # Compass with tap-to-calibrate
+│   │   ├── CalibrationOverlay.tsx
+│   │   └── LocationList.tsx
+│   └── shared/
+│       ├── types.ts
+│       └── constants.ts
+```
+
+---
+
+## Simple Web App (Production Ready)
 
 ### What Works
 
@@ -24,8 +69,10 @@
 | Location CRUD + localStorage | ✅ | 5 Tel Aviv samples included |
 | Calibration (offset) | ✅ | Tap compass → select landmark → calibrate |
 | PWA (offline, installable) | ✅ | Service worker + manifest |
-| Debug pane (live logs) | ✅ | Minimizable, full-width |
-| Responsive panels | ✅ | Stack vertically, same styling |
+| Settings panel | ✅ | Panel visibility, camera settings, version badge |
+| Bearing display bar | ✅ | Live compass heading in top bar |
+| Compass wheel/dial | ✅ | Rotate to adjust heading offset |
+| Click-to-copy GPS coords | ✅ | Click GPS status to copy lat,lon,alt |
 
 ### File Structure
 
@@ -34,7 +81,7 @@ public/simple/
 ├── index.html          # Single page, loads ES modules
 ├── style.css           # All styling (~900 lines)
 └── src/
-    ├── app2.js         # Main coordinator (25KB)
+    ├── app2.js         # Main coordinator
     ├── geo.js          # Math: bearing, distance, projection
     ├── calibration.js  # Offset calc + localStorage
     ├── storage.js      # Location CRUD + localStorage
@@ -44,154 +91,56 @@ public/simple/
     └── overlay.js      # Canvas drawing loop (requestAnimationFrame)
 ```
 
-### Core Math
-
-```
-User: (lat1, lon1)  →  Location: (lat2, lon2)
-bearing = atan2(sin(Δlon)·cos(lat2), cos(lat1)·sin(lat2) - sin(lat1)·cos(lat2)·cos(Δlon))
-distance = haversine(lat1, lon1, lat2, lon2)
-
-Screen X = centerX + (bearing - compassHeading + headingOffset) * (canvasWidth / FOV)
-FOV ≈ 90° horizontal
-```
-
 ---
 
-## React Native/Expo + ARKit (Future — Native Port)
+## TODO — Next Features (In Priority Order)
 
-### Why
+### 1. GPS Refresh Rate Setting
+- [ ] Slider/bar in settings: 200ms to 20s (default 1000ms)
+- [ ] Throttles `watchPosition` updates to save battery
 
-- Native iOS performance, ARKit integration
-- Same core logic (geo.ts, calibration.ts, storage.ts) — swap adapters
-- Expo dev build required (not Expo Go)
+### 2. Copy/Paste Location Picker
+- [ ] Copy location data (lat/lon/alt/name) to clipboard as text/JSON
+- [ ] Paste from clipboard into location picker / add location form
+- [ ] Format: "Name, Lat, Lon, Alt" or JSON for easy sharing
 
-### Architecture
+### 3. Phone Level Indicator
+- [ ] Show pitch/roll from DeviceOrientation (beta/gamma)
+- [ ] Visual: horizontal line with side dashes `|---|`
+- [ ] Green when level (|pitch| < 2° and |roll| < 2°), amber when slightly off, red when crooked
+- [ ] Display in top bar or overlay, updates in real-time
+- [ ] Helps user hold phone level for accurate compass/bearing
 
-```
-horizon-overlook-native/
-├── src/
-│   ├── core/              # ✅ Copied from web (geo, calibration, storage)
-│   │   └── storage.ts     # Swap localStorage → AsyncStorage
-│   ├── native/
-│   │   ├── ARView.tsx     # expo-camera + react-three-fiber (ARKit)
-│   │   ├── CompassRing.tsx# expo-sensors (magnetometer)
-│   │   ├── CalibrationOverlay.tsx
-│   │   ├── LocationList.tsx
-│   │   └── NativeApp.tsx
-│   └── shared/
-│       └── types.ts
-```
+### 4. Smooth Marker Animation
+- [ ] Lerp position between frames for fluid marker movement
 
-### API Mapping
+### 5. Figure-8 Calibration Detection
+- [ ] Auto-detect figure-8 motion for iOS calibration
 
-| Web | Native (Expo) |
-|-----|---------------|
-| WebXR `immersive-ar` | `expo-camera` (ARKit backend) |
-| `deviceorientationabsolute` | `expo-sensors` Magnetometer |
-| `navigator.geolocation` | `expo-location` |
-| `localStorage` | `AsyncStorage` |
-| Three.js canvas | `@react-three/fiber` + `expo-gl` |
-
-### Next Steps (When Starting Native)
-
-1. `expo init horizon-overlook-native --template expo-template-blank-typescript`
-2. `expo install expo-camera expo-location expo-sensors three @react-three/fiber @react-three/drei expo-gl`
-3. Copy `src/core/` → swap `localStorage` → `AsyncStorage`
-4. Build `ARView.tsx`: `expo-camera` + `@react-three/fiber` + ARKit
-5. Port compass: `expo-sensors` Magnetometer → heading
-6. Port calibration/location list (RN components)
-7. Test on device via dev build: `expo run:ios --device`
-
----
-
-## TODO — Next Features
-
-### High Priority
-
-- [x] **Version badge**: Show `v1.0.0-<6-char-git-hash>` in top-right corner ✅
-  - Implemented: reads from git hash, displayed in top-right badge and settings
-
-- [x] **Settings panel** with pane visibility toggles ✅
-  - Settings button (⚙️) in top bar
-  - Modal with toggles for Locations panel, Debug pane, Compass ring
-  - Persists to localStorage, restores on init
-
-### Medium Priority
-
-- [ ] **Bearing display bar** — live compass heading in top bar
-  - Show current bearing (e.g., "N 23°" or "23°") next to compass
-  - Updates in real-time as device rotates
-  - Format: Cardinal (N/NE/E/SE/S/SW/W/NW) + degrees
-
-- [ ] **Wheel/dial interaction** on top-left compass button
-  - Tap compass button → opens picker overlay (exists)
-  - Add: Rotate finger on compass ring to manually adjust heading offset
-  - Visual feedback: ring rotates, offset value updates
-  - Useful for fine-tuning calibration without landmark
-  - if mobile is "level"(on a desk, pointing tothe ground) i want it to be a compass like. once we raise it i want
-  the compass to turn into a level bar
-
-- [ ] **Map with location picker** (MapLibre / Leaflet)
-  - Full-screen map overlay (triggered from location picker)
-  - Tap map to select location → auto-fill lat/lon
-  - Show current GPS position + saved locations as markers
-  - Search/geocode address → pin on map
-  - Works offline with cached tiles (optional)
-
-- [ ] **Copy/paste mechanism for location picker**
-  - Copy location data (lat/lon/alt/name) to clipboard as text/JSON
-  - Paste from clipboard into location picker / add location form
-  - Format: "Name, Lat, Lon, Alt" or JSON for easy sharing
-
-- [ ] **Camera settings** - default off (already implemented) + settings toggle
-  - Camera starts OFF by default (current behavior ✅)
-  - Add toggle in Settings panel: "Camera default state" (On/Off)
-  - Persist to localStorage, apply on init
-
-- [ ] **Smooth marker animation** (lerp position between frames)
-- [ ] **Figure-8 calibration detection** (auto-detect calibration motion)
-- [ ] **Photo capture** with overlay baked in (canvas.toDataURL)
-- [ ] **Elevation profile view** (side view of terrain between points)
-
-- [ ] **Phone level indicator** (like camera level)
-  - Show pitch/roll from DeviceOrientation (beta/gamma)
-  - Visual: horizontal line with two side dashes `|---|`
-  - Green when level (|pitch| < 2° and |roll| < 2°), amber when slightly off, red when crooked
-  - Display in top bar or overlay, updates in real-time
-  - Helps user hold phone level for accurate compass/bearing
-
-- [ ] **Auto-minimize locations panel on selection**
-  - When user taps a location in the list → auto-minimize panel
-  - Keeps UI clean, shows more camera view
-  - Optional: setting to enable/disable this behavior
-
-- [ ] **Fix: Current Location pane issues**
-  - Overlay not opening / displaying correctly on some devices
-  - Debug: check event listener on current-location-btn
-  - Verify GPS/compass data populates correctly
-  - Test on iOS Safari (permission flow may block)
-
-### Low Priority / Nice to Have
-
-- [ ] Live location sharing (Firebase/Supabase realtime)
-- [ ] POI categories with icons (home, work, landmark, custom)
-- [ ] Share location list via QR code / URL
-- [ ] Dual-view UI: camera feed + map, swappable
-- [ ] Android ARCore parity testing
+### 6. Map with Location Picker (MapLibre / Leaflet)
+- [ ] Full-screen map overlay, tap to select location
+- [ ] Show current GPS + saved locations as markers
+- [ ] Search/geocode address
 
 ---
 
 ## Done ✅ (Recent)
 
-- [x] Fix: Location item click no longer toggles panel
-- [x] Fix: Debug pane shows title when minimized
-- [x] Fix: Current Location overlay shows GPS independently of compass
-- [x] Fix: No error toast for denied compass permission
-- [x] Refactor: Stack panels vertically (locations top, debug bottom)
-- [x] Refactor: Unified panel header/control styling
-- [x] Cleanup: Removed calibration overlay + module
-- [x] Cleanup: Removed unused `app.js`
-- [x] Docs: README.md, CHANGELOG.md created
+- [x] Camera settings — default off + settings toggle
+- [x] Compass wheel/dial interaction (rotate to adjust heading offset)
+- [x] Bearing display bar — live compass heading in top bar
+- [x] Click-to-copy GPS coordinates (lat,lon,alt)
+- [x] Fix: Current Location overlay — removed "Waiting for compass..."
+- [x] Auto-minimize location panel on selection (React)
+- [x] Tel Aviv sample locations (5 locations)
+- [x] Calibration result display (offset, lat/lon, timestamp, landmark, true bearing)
+- [x] Interactive CompassRing — tap to calibrate when uncalibrated
+- [x] Version badge in top-right corner
+- [x] Settings panel with pane visibility toggles
+- [x] Camera default OFF
+- [x] GPS/compass independence in current location overlay
+- [x] Stack panels vertically (locations top, debug bottom)
+- [x] Unified panel header/control styling
 
 ---
 
@@ -201,9 +150,9 @@ horizon-overlook-native/
 |------|------------|
 | iOS Safari compass accuracy | Calibration flow + figure-8 detection (planned) |
 | GPS altitude unreliable | Manual altitude override in location edit (exists) |
-| Battery drain | Throttle GPS 1Hz, pause AR when backgrounded |
+| Battery drain | Throttle GPS (configurable), pause AR when backgrounded |
 | Android compass parity | Test on Pixel/Samsung; same DeviceOrientation API |
-| HTTPS required for device testing | Use ngrok, self-signed cert, or local CA |
+| HTTPS required for device testing | Use simple-server.cjs with self-signed cert |
 
 ---
 
