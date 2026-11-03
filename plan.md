@@ -32,6 +32,8 @@
 | Compass update rate | ✅ | Configurable 50-2000ms slider |
 | Compass zero offset | ✅ | 0-360° slider (180° fixes N/S) |
 | Level detection | ✅ | Status bar shows Level/Tilted via beta/gamma |
+| Level indicator (visual) | ✅ | Bubble gauge in top bar; green <2°, amber <5°, red beyond; settings toggle |
+| Scrollable settings pane | ✅ | Settings panel scrolls when content exceeds 80vh |
 
 ### File Structure
 
@@ -75,11 +77,12 @@ viewfinder/
 - [ ] Format: "Name, Lat, Lon, Alt" or JSON for easy sharing
 
 ### 4. Phone Level Indicator (Visual)
-- [ ] Show pitch/roll from DeviceOrientation (beta/gamma)
-- [ ] Visual: horizontal line with side dashes `|---|`
-- [ ] Green when level (|pitch| < 2° and |roll| < 2°), amber when slightly off, red when crooked
-- [ ] Display in top bar or overlay, updates in real-time
-- [ ] Helps user hold phone level for accurate compass/bearing
+- [x] Show pitch/roll from DeviceOrientation (beta/gamma)
+- [x] Visual: bubble gauge with horizontal guide line `|---|`
+- [x] Green when level (|pitch| < 2° and |roll| < 2°), amber when slightly off, red when crooked
+- [x] Display in top bar, updates in real-time
+- [x] Helps user hold phone level for accurate compass/bearing
+- [x] Settings toggle to show/hide (persisted)
 
 ### 5. Smooth Marker Animation
 - [ ] Lerp position between frames for fluid marker movement
@@ -93,6 +96,11 @@ viewfinder/
 
 ## Done ✅ (Recent)
 
+- [x] Port app2 features into viewfinder (single app: settings, camera toggle, dial, debug pane, current-location overlay, hybrid compass)
+- [x] Scrollable settings pane (max-height 80vh + overflow-y)
+- [x] Visual level indicator (bubble gauge) with settings toggle
+- [x] Remove stale app copies (horizon-overlook/public/simple + public/src) — gitignored, files kept on disk
+- [x] simple-server.cjs defaults to serving viewfinder/
 - [x] Compass invert toggle & configurable update rate in Settings
 - [x] Compass zero offset (0-360°) — 180° fixes N/S upside down
 - [x] Level detection via beta/gamma → status bar shows Level/Tilted

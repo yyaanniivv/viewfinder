@@ -60,6 +60,9 @@ const compassRateValue = document.getElementById('compass-rate-value');
 const compassZeroOffsetSlider = document.getElementById('compass-zero-offset');
 const compassZeroOffsetValue = document.getElementById('compass-zero-offset-value');
 const compassAutoCalibrateCheckbox = document.getElementById('compass-auto-calibrate');
+// Level indicator
+const levelIndicatorToggle = document.getElementById('toggle-level-indicator');
+const levelIndicatorCanvas = document.getElementById('level-indicator');
 // Calibration overlay
 const calibrationOverlay = document.getElementById('calibration-overlay');
 const statusCompassEl = document.getElementById('status-compass');
@@ -90,6 +93,10 @@ let compassCtx = null;
 let compassDirection = 1; // Set to -1 if compass reads backwards
 // Compass zero offset: adjust if North isn't at 0°
 let compassZeroOffset = 0;
+// Level indicator state
+let levelPitch = null;    // front-to-back tilt (beta)
+let levelRoll = null;     // left-to-right tilt (gamma)
+let levelIndicatorEnabled = true;
 
 // Debug function (module scope so callbacks can use it)
 function debug(msg) {
@@ -472,6 +479,13 @@ async function init() {
     debug(`Compass auto-calibrate: ${e.target.checked ? 'on' : 'off'}`);
   });
 
+  // Level indicator toggle
+  levelIndicatorToggle?.addEventListener('change', (e) => {
+    levelIndicatorEnabled = e.target.checked;
+    localStorage.setItem('viewfinder:levelIndicator', levelIndicatorEnabled);
+    debug(`Level indicator: ${levelIndicatorEnabled ? 'on' : 'off'}`);
+  });
+
   // Load saved visibility preferences
   const showLocations = localStorage.getItem('viewfinder:showLocations');
   if (showLocations !== null) {
@@ -536,6 +550,14 @@ async function init() {
     compassZeroOffsetSlider.value = offset;
     compassZeroOffsetValue.textContent = `${offset}°`;
     debug(`Loaded compass zero offset: ${offset}°`);
+  }
+
+  // Load level indicator preference (default on)
+  const levelIndicatorPref = localStorage.getItem('viewfinder:levelIndicator');
+  if (levelIndicatorPref !== null) {
+    levelIndicatorEnabled = levelIndicatorPref === 'true';
+    levelIndicatorToggle.checked = levelIndicatorEnabled;
+    debug(`Loaded level indicator: ${levelIndicatorEnabled ? 'on' : 'off'}`);
   }
 
   // GPS Status click-to-copy: copies "lat,lon,alt" to clipboard
@@ -611,6 +633,8 @@ function handleCompassUpdate(data) {
   compassAbsolute = data.absolute;
   // Store level state for UI
   window.compassIsLevel = data.isLevel;
+  levelPitch = data.beta;
+  levelRoll = data.gamma;
 
   updateStatus();
   updateBearingDisplay();
@@ -703,11 +727,12 @@ function updateStatus() {
     }
   }
 
-  // Update level indicator
+  // Update level indicator (text status) — hidden when the bubble gauge is active
   const statusLevel = document.getElementById('status-level');
   if (statusLevel) {
     const isLevel = window.compassIsLevel;
-    if (isLevel !== undefined) {
+    const gaugeActive = levelIndicatorEnabled && levelPitch !== null;
+    if (isLevel !== undefined && !gaugeActive) {
       statusLevel.style.display = 'inline-block';
       statusLevel.textContent = isLevel ? '⚖️ Level' : '⚖️ Tilted';
       statusLevel.className = isLevel ? 'good' : 'warn';
@@ -715,6 +740,86 @@ function updateStatus() {
       statusLevel.style.display = 'none';
     }
   }
+
+  // Update visual bubble level indicator
+  drawLevelIndicator();
+}
+
+/**
+ * Visual level indicator: bubble gauge showing pitch/roll.
+ * Horizontal line with a bubble that moves with tilt.
+ * Green |pitch|<2° & |roll|<2°, amber <5°, red beyond.
+ */
+function drawLevelIndicator() {
+  if (!levelIndicatorCanvas) return;
+
+  const show = levelIndicatorEnabled && levelPitch !== null;
+  levelIndicatorCanvas.style.display = show ? 'block' : 'none';
+  if (!show) return;
+
+  const ctx = levelIndicatorCanvas.getContext('2d');
+  const w = levelIndicatorCanvas.width;
+  const h = levelIndicatorCanvas.height;
+  const centerX = w / 2;
+  const centerY = h / 2;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Clamp tilt to ±10° for bubble travel
+  const MAX_TILT = 10;
+  const pitch = Math.max(-MAX_TILT, Math.min(MAX_TILT, levelPitch));
+  const roll = Math.max(-MAX_TILT, Math.min(MAX_TILT, levelRoll));
+
+  // Color by worst axis
+  const worst = Math.max(Math.abs(levelPitch), Math.abs(levelRoll));
+  const color = worst < 2 ? '#06D6A0' : worst < 5 ? '#FFBE0B' : '#FF6B6B';
+
+  // Gauge frame: horizontal guide line with end dashes |---|
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 2;
+  const lineHalf = w / 2 - 14;
+  ctx.beginPath();
+  ctx.moveTo(centerX - lineHalf, centerY);
+  ctx.lineTo(centerX + lineHalf, centerY);
+  ctx.stroke();
+
+  // End dashes
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(centerX - lineHalf, centerY - 5);
+  ctx.lineTo(centerX - lineHalf, centerY + 5);
+  ctx.moveTo(centerX + lineHalf, centerY - 5);
+  ctx.lineTo(centerX + lineHalf, centerY + 5);
+  ctx.stroke();
+
+  // Center tick (target)
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(centerX, centerY - 8);
+  ctx.lineTo(centerX, centerY + 8);
+  ctx.stroke();
+
+  // Bubble: horizontal position = roll (left/right tilt),
+  // vertical = pitch (front/back tilt). Bubble moves opposite to tilt,
+  // like a real spirit level.
+  const bubbleX = centerX - (roll / MAX_TILT) * lineHalf;
+  const bubbleY = centerY - (pitch / MAX_TILT) * 14;
+
+  ctx.beginPath();
+  ctx.arc(bubbleX, bubbleY, 6, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Degree readout
+  ctx.font = '10px ui-monospace, monospace';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`P${levelPitch >= 0 ? '+' : ''}${levelPitch.toFixed(0)}° R${levelRoll >= 0 ? '+' : ''}${levelRoll.toFixed(0)}°`, centerX, centerY + 12);
 }
 
 function updateBearingDisplay() {

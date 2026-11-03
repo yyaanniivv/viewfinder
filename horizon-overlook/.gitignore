@@ -25,3 +25,8 @@ dist-ssr
 
 # Certificates
 *.pem
+public/index.html
+public/style.css
+public/README.md
+public/simple/
+public/src/

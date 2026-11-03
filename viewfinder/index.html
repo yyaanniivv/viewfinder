@@ -39,6 +39,9 @@
       <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
     </div>
 
+    <!-- Visual level indicator (bubble gauge) -->
+    <canvas id="level-indicator" width="120" height="44" style="display: none;" aria-label="Phone level indicator"></canvas>
+
     <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
       📷
     </button>
@@ -94,6 +97,12 @@
           <label>
             <input type="checkbox" id="compass-auto-calibrate" checked>
             <span>Auto-calibrate on Figure-8</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-level-indicator" checked>
+            <span>Level Indicator</span>
           </label>
         </div>
       </div>
