@@ -42,18 +42,19 @@ A **toposcope** (also called an **orientation plaque**, **orientation table**, o
 ## Quick Start
 
 ```bash
-# Serve locally (HTTPS required for camera on mobile)
+# Option 1 (recommended): bundled HTTPS server with self-signed cert (LAN + mobile)
+# One-time: generate the cert in horizon-overlook/ (already done if key.pem/cert.pem exist):
+openssl req -x509 -newkey rsa:2048 -keyout horizon-overlook/key.pem -out horizon-overlook/cert.pem -days 365 -nodes -subj "/CN=localhost"
 
-# Option 1: Python (bind to 0.0.0.0 for network access)
+# Start the server (serves viewfinder/ on https://0.0.0.0:5174):
+cd /path/to/repo && VIEWFINDER_DIR=$PWD/viewfinder node horizon-overlook/simple-server.cjs
+# On your phone: https://<your-mac-ip>:5174 (accept the self-signed cert warning)
+
+# Option 2: Python (HTTP only — no camera/compass on mobile)
 python3 -m http.server 5174 --bind 0.0.0.0 --directory viewfinder
 
-# Option 2: npx serve (HTTP)
+# Option 3: npx serve (HTTP)
 npx serve viewfinder -l 5174
-
-# Option 3: npx serve with self-signed cert (HTTPS for mobile testing)
-# Generate cert first (one-time):
-# openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"
-npx serve viewfinder -l 5174 --ssl-cert cert.pem --ssl-key key.pem
 
 # Option 4: ngrok for HTTPS (exposes local server to internet)
 ngrok http 5174
@@ -83,15 +84,15 @@ Add your own via the **Locations panel** (bottom drawer).
 ## Architecture
 
 ```
-index.html          # Camera <video> + Canvas <canvas> + UI
+index.html          # Camera <video> + Canvas <canvas> + UI panels
 style.css           # All styling (dark theme, mobile-first)
 src/
-├── app.js          # Main coordinator
+├── app.js          # Main coordinator (settings, camera toggle, dial, debug pane)
 ├── geo.js          # Haversine distance, bearing math
 ├── calibration.js  # Compass offset computation + localStorage
-├── storage.js      # Location CRUD (localStorage)
+├── storage.js      # Location CRUD (localStorage) + colors + type emojis
 ├── camera.js       # getUserMedia setup
-├── compass.js      # DeviceOrientation + iOS permission
+├── compass.js      # Hybrid: OrientationSensor API → DeviceOrientation fallback
 ├── gps.js          # navigator.geolocation.watchPosition
 └── overlay.js      # Canvas 2D drawing (horizon, ticks, markers)
 ```

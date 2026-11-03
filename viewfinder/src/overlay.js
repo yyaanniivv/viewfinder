@@ -114,7 +114,8 @@ export class Overlay {
     const { ctx } = this;
 
     this.locations.forEach(loc => {
-      const { bearing: trueBearing, distance } = bearing(this.userPosition, loc);
+      const trueBearing = bearing(this.userPosition, loc);
+      const distance = haversineDistance(this.userPosition, loc);
       const calibratedBearing = normalizeBearing(trueBearing - this.headingOffset);
       const relBearing = normalizeBearing(calibratedBearing - this.compassHeading);
 

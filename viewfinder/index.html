@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#0A0A0F">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Viewfinder">
@@ -12,112 +13,296 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Version indicator (click for settings) -->
+  <button id="version-badge" title="Settings">v1.0.0</button>
   <!-- Camera feed -->
-  <video id="camera" autoplay playsinline muted></video>
+  <video id="camera" autoplay playsinline muted style="display: none;"></video>
 
   <!-- Canvas overlay for markers -->
-  <canvas id="overlay" aria-label="Horizon markers overlay"></canvas>
+  <canvas id="overlay" aria-label="Horizon markers overlay" style="display: none;"></canvas>
 
-  <!-- Top bar: Compass + Status -->
+  <!-- Top bar: Compass + Bearing + Status + Camera Toggle -->
   <div class="top-bar">
     <button id="compass-btn" class="compass-btn" aria-label="Tap to calibrate compass">
       <canvas id="compass-canvas" width="200" height="200"></canvas>
     </button>
 
+    <!-- Bearing display - shows current heading -->
+    <div id="bearing-display" class="bearing-display" aria-label="Current heading">
+      <span id="bearing-cardinal" class="bearing-cardinal">—</span>
+      <span id="bearing-degrees" class="bearing-degrees">—°</span>
+    </div>
+
     <div class="status-indicators">
       <div id="status-gps" class="warn">📍 GPS: —</div>
       <div id="status-compass" class="warn">🧭 Relative</div>
+      <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
+    </div>
+
+    <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
+      📷
+    </button>
+  </div>
+
+  <!-- Settings Overlay -->
+  <div id="settings-overlay" class="overlay" style="display: none;">
+    <div class="picker-panel" style="max-width: 320px;">
+      <div class="picker-header">
+        <h2>Settings</h2>
+        <button id="settings-close-btn" class="picker-close" aria-label="Close">×</button>
+      </div>
+
+      <div class="settings-section">
+        <h3>Camera</h3>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="camera-enabled" checked>
+            <span>Camera Enabled</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="camera-default-on">
+            <span>Start Camera Automatically</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Compass</h3>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="compass-invert" checked>
+            <span>Invert Compass Direction</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label for="compass-rate">Update Rate (ms)</label>
+          <div class="slider-container">
+            <input type="range" id="compass-rate" min="50" max="2000" step="50" value="100">
+            <span id="compass-rate-value">100ms</span>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label for="compass-zero-offset">Zero Offset (°)</label>
+          <div class="slider-container">
+            <input type="range" id="compass-zero-offset" min="0" max="360" step="1" value="0">
+            <span id="compass-zero-offset-value">0°</span>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="compass-auto-calibrate" checked>
+            <span>Auto-calibrate on Figure-8</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Panel Visibility</h3>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-locations-panel" checked>
+            <span>Locations Panel</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-debug-pane" checked>
+            <span>Debug Pane</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-compass" checked>
+            <span>Compass Ring</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>About</h3>
+        <div class="setting-row">
+          <span>Version</span>
+          <span id="settings-version">v1.0.0</span>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Bottom: Locations Panel -->
-  <div id="locations-panel" class="panel">
-    <div class="panel-header">
-      <h3>Locations (<span id="location-count">0</span>)</h3>
-      <button id="add-location-btn" class="add-btn">+ Add</button>
-    </div>
+  <!-- Current Location Overlay (triggered by compass button long-press; see calibration) -->
+  <div id="current-location-overlay" class="overlay" style="display: none;">
+    <div class="picker-panel">
+      <div class="picker-header">
+        <h2>Current Location</h2>
+        <button id="current-location-close-btn" class="picker-close" aria-label="Close">×</button>
+      </div>
 
-    <!-- Location Form -->
-    <div id="location-form-container" class="form-container" style="display: none;">
-      <form id="location-form">
-        <div class="field">
-          <label>Name</label>
-          <input type="text" id="loc-name" placeholder="Location name" required>
+      <!-- Live GPS Status -->
+      <div id="current-gps-status" class="current-gps-status">
+        <div class="gps-stat">
+          <span class="gps-stat-label">Latitude</span>
+          <span id="gps-lat" class="gps-stat-value">—</span>
         </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Latitude</label>
-            <input type="number" step="0.000001" id="loc-lat" placeholder="32.068444" required>
-          </div>
-          <div class="field">
-            <label>Longitude</label>
-            <input type="number" step="0.000001" id="loc-lon" placeholder="34.784437" required>
-          </div>
+        <div class="gps-stat">
+          <span class="gps-stat-label">Longitude</span>
+          <span id="gps-lon" class="gps-stat-value">—</span>
         </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Altitude (m)</label>
-            <input type="number" id="loc-alt" placeholder="Optional">
-          </div>
-          <div class="field">
-            <label>Type</label>
-            <select id="loc-type">
-              <option value="building">Building</option>
-              <option value="landmark">Landmark</option>
-              <option value="poi">Point of Interest</option>
-              <option value="custom">Custom</option>
-            </select>
-          </div>
+        <div class="gps-stat">
+          <span class="gps-stat-label">Altitude</span>
+          <span id="gps-alt" class="gps-stat-value">—</span>
         </div>
-        <div class="field">
-          <label>Color</label>
-          <select id="loc-color"></select>
+        <div class="gps-stat">
+          <span class="gps-stat-label">Accuracy</span>
+          <span id="gps-acc" class="gps-stat-value">—</span>
         </div>
-        <div class="form-actions">
-          <button type="button" id="loc-cancel-btn" class="cancel-btn">Cancel</button>
-          <button type="submit" class="save-btn">Save</button>
+        <div class="gps-stat">
+          <span class="gps-stat-label">Bearing</span>
+          <span id="gps-bearing" class="gps-stat-value">—</span>
         </div>
-      </form>
-    </div>
+        <div class="gps-stat">
+          <span class="gps-stat-label">Compass</span>
+          <span id="gps-compass" class="gps-stat-value">—</span>
+        </div>
+      </div>
 
-    <!-- Location List -->
-    <div id="location-list" class="location-list"></div>
+      <!-- Manual Override Section -->
+      <div class="picker-field">
+        <label>Manual Override (when GPS is off or inaccurate):</label>
+        <div class="manual-coords">
+          <div class="manual-field">
+            <label>Lat</label>
+            <input type="number" step="0.000001" id="manual-lat" placeholder="32.068444">
+          </div>
+          <div class="manual-field">
+            <label>Lon</label>
+            <input type="number" step="0.000001" id="manual-lon" placeholder="34.784437">
+          </div>
+        </div>
+        <div class="manual-field">
+          <label>Altitude (m)</label>
+          <input type="number" id="manual-alt" placeholder="Optional">
+        </div>
+      </div>
+
+      <div class="picker-actions">
+        <button id="current-location-use-gps-btn" class="picker-btn secondary">Use GPS</button>
+        <button id="current-location-set-manual-btn" class="picker-btn primary">Set Manual Location</button>
+      </div>
+    </div>
   </div>
 
   <!-- Calibration Overlay -->
   <div id="calibration-overlay" class="overlay" style="display: none;">
-    <div class="cal-panel">
-      <h2>Compass Calibration</h2>
-      <p class="cal-instruction">Select a visible location, point phone at it, tap Calibrate</p>
+    <div class="picker-panel">
+      <div class="picker-header">
+        <h2>Compass Calibration</h2>
+        <button id="cal-close-btn" class="picker-close" aria-label="Close">×</button>
+      </div>
+      <p class="picker-instruction">Select a visible location, point phone at it, tap Calibrate</p>
 
-      <div class="cal-field">
+      <div class="picker-field">
         <label>Visible Location:</label>
         <select id="cal-location-select"></select>
       </div>
 
-      <div class="cal-status">
-        <div class="cal-status-item">
-          <span class="cal-label">Compass</span>
-          <span id="cal-compass" class="cal-value">—</span>
+      <div class="current-gps-status">
+        <div class="gps-stat">
+          <span class="gps-stat-label">Compass</span>
+          <span id="cal-compass" class="gps-stat-value">—</span>
         </div>
-        <div class="cal-status-item">
-          <span class="cal-label">True Bearing</span>
-          <span id="cal-bearing" class="cal-value">—</span>
+        <div class="gps-stat">
+          <span class="gps-stat-label">True Bearing</span>
+          <span id="cal-bearing" class="gps-stat-value">—</span>
         </div>
-        <div class="cal-status-item">
-          <span class="cal-label">GPS</span>
-          <span id="cal-gps" class="cal-value">Waiting...</span>
+        <div class="gps-stat">
+          <span class="gps-stat-label">GPS</span>
+          <span id="cal-gps" class="gps-stat-value">Waiting...</span>
         </div>
       </div>
 
-      <div id="cal-result" class="cal-result" style="display: none;"></div>
+      <div id="cal-result" class="picker-selected-info" style="display: none;"></div>
 
-      <div class="cal-buttons">
-        <button id="cal-cancel-btn" class="cal-btn cancel">Cancel</button>
-        <button id="cal-calibrate-btn" class="cal-btn primary">Calibrate Now</button>
+      <div class="picker-actions">
+        <button id="cal-cancel-btn" class="picker-btn secondary">Cancel</button>
+        <button id="cal-calibrate-btn" class="picker-btn primary">Calibrate Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Panels Container (stacked vertically: locations on top, debug below) -->
+  <div id="bottom-panels">
+    <!-- Locations Panel (top) -->
+    <div id="locations-panel" class="panel" data-state="minimized">
+      <div class="panel-header">
+        <h3>Locations (<span id="location-count">0</span>)</h3>
+        <div class="panel-controls">
+          <button id="minimize-locations-btn" class="control-btn" aria-label="Minimize locations panel" title="Minimize" style="display: none;">−</button>
+          <button id="maximize-locations-btn" class="control-btn" aria-label="Maximize locations panel" title="Maximize">□</button>
+          <button id="add-location-btn" class="add-btn">+ Add</button>
+        </div>
       </div>
 
-      <button id="cal-close-btn" class="cal-close">×</button>
+      <div class="panel-content">
+        <!-- Location Form -->
+        <div id="location-form-container" class="form-container" style="display: none;">
+          <form id="location-form">
+            <div class="field">
+              <label>Name</label>
+              <input type="text" id="loc-name" placeholder="Location name" required>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Latitude</label>
+                <input type="number" step="0.000001" id="loc-lat" placeholder="32.068444" required>
+              </div>
+              <div class="field">
+                <label>Longitude</label>
+                <input type="number" step="0.000001" id="loc-lon" placeholder="34.784437" required>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Altitude (m)</label>
+                <input type="number" id="loc-alt" placeholder="Optional">
+              </div>
+              <div class="field">
+                <label>Type</label>
+                <select id="loc-type">
+                  <option value="building">Building</option>
+                  <option value="landmark">Landmark</option>
+                  <option value="poi">Point of Interest</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Color</label>
+              <select id="loc-color"></select>
+            </div>
+            <div class="form-actions">
+              <button type="button" id="loc-cancel-btn" class="cancel-btn">Cancel</button>
+              <button type="submit" class="save-btn">Save</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Location List -->
+        <div id="location-list" class="location-list"></div>
+      </div>
+    </div>
+
+    <!-- Debug Pane (bottom) - same style as locations panel -->
+    <div id="debug-pane" class="panel debug-pane" data-state="minimized">
+      <div class="panel-header">
+        <h3>Debug</h3>
+        <div class="panel-controls debug-controls">
+          <button id="minimize-debug-btn" class="control-btn" aria-label="Minimize debug pane" title="Minimize" style="display: none;">−</button>
+          <button id="maximize-debug-btn" class="control-btn" aria-label="Maximize debug pane" title="Maximize">□</button>
+          <button id="clear-debug-btn" class="control-btn" aria-label="Clear debug log" title="Clear">🗑</button>
+        </div>
+      </div>
+      <div id="debug-content" class="debug-content panel-content"></div>
     </div>
   </div>
 

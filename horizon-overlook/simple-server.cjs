@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = 5174;
-const PUBLIC_DIR = path.join(__dirname, 'public/simple');
+const PUBLIC_DIR = process.env.VIEWFINDER_DIR || path.join(__dirname, 'public/simple');
 
 const options = {
   key: fs.readFileSync(path.join(__dirname, 'key.pem')),
