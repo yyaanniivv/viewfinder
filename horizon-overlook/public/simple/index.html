@@ -69,6 +69,29 @@
       </div>
 
       <div class="settings-section">
+        <h3>Compass</h3>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="compass-invert" checked>
+            <span>Invert Compass Direction</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label for="compass-rate">Update Rate (ms)</label>
+          <div class="slider-container">
+            <input type="range" id="compass-rate" min="50" max="2000" step="50" value="100">
+            <span id="compass-rate-value">100ms</span>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="compass-auto-calibrate" checked>
+            <span>Auto-calibrate on Figure-8</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
         <h3>Panel Visibility</h3>
         <div class="setting-row">
           <label>
@@ -127,13 +150,12 @@
           <span id="gps-acc" class="gps-stat-value">—</span>
         </div>
         <div class="gps-stat">
+          <span class="gps-stat-label">Bearing</span>
+          <span id="gps-bearing" class="gps-stat-value">—</span>
+        </div>
+        <div class="gps-stat">
           <span class="gps-stat-label">Compass</span>
           <span id="gps-compass" class="gps-stat-value">—</span>
-        </div>
-        <!-- Bearing to tracked location -->
-        <div id="gps-bearing-row" class="gps-stat" style="display: none;">
-          <span class="gps-stat-label">Bearing to Target</span>
-          <span id="gps-bearing" class="gps-stat-value">—</span>
         </div>
       </div>
 

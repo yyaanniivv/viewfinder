@@ -29,30 +29,6 @@
 | Interactive CompassRing | ✅ | Tap to calibrate when uncalibrated |
 | Auto-minimize location panel | ✅ | Collapses on location selection |
 
-### File Structure
-
-```
-horizon-overlook/
-├── public/
-│   ├── index.html
-│   ├── manifest.json
-│   └── sw.js (service worker)
-├── src/
-│   ├── core/
-│   │   ├── geo.ts          # Math: bearing, distance, projection
-│   │   ├── calibration.ts  # Offset calc + localStorage
-│   │   └── storage.ts      # Location CRUD + localStorage
-│   ├── web/
-│   │   ├── App.tsx         # Main coordinator
-│   │   ├── ARCanvas.tsx    # Canvas overlay rendering
-│   │   ├── CompassRing.tsx # Compass with tap-to-calibrate
-│   │   ├── CalibrationOverlay.tsx
-│   │   └── LocationList.tsx
-│   └── shared/
-│       ├── types.ts
-│       └── constants.ts
-```
-
 ---
 
 ## Simple Web App (Production Ready)
@@ -73,6 +49,8 @@ horizon-overlook/
 | Bearing display bar | ✅ | Live compass heading in top bar |
 | Compass wheel/dial | ✅ | Rotate to adjust heading offset |
 | Click-to-copy GPS coords | ✅ | Click GPS status to copy lat,lon,alt |
+| Compass invert toggle | ✅ | In Settings: "Invert Compass Direction" |
+| Compass update rate | ✅ | Configurable 50-2000ms slider |
 
 ### File Structure
 
@@ -87,7 +65,7 @@ public/simple/
     ├── storage.js      # Location CRUD + localStorage
     ├── camera.js       # getUserMedia + video element
     ├── compass.js      # DeviceOrientation + iOS permission
-    ├── gps.js          # watchPosition wrapper
+    ├── gps.js          | watchPosition wrapper
     └── overlay.js      # Canvas drawing loop (requestAnimationFrame)
 ```
 
@@ -95,27 +73,32 @@ public/simple/
 
 ## TODO — Next Features (In Priority Order)
 
-### 1. GPS Refresh Rate Setting
+### 1. Compass Improvements (IN PROGRESS)
+- [ ] **Device orientation matrix** — Use `populateMatrix()` / `absolute` + `beta`/`gamma` to detect:
+  - Device level (pointing down) → show compass
+  - Device raised (pointing at horizon) → show level indicator
+  - Auto-switch between compass/level mode
+- [ ] **Compass calibration UI** — Visual figure-8 guide + auto-detect
+- [ ] **OrientationSensor API** — Migrate from deprecated DeviceOrientation to modern OrientationSensor API
+
+### 2. GPS Refresh Rate Setting
 - [ ] Slider/bar in settings: 200ms to 20s (default 1000ms)
 - [ ] Throttles `watchPosition` updates to save battery
 
-### 2. Copy/Paste Location Picker
+### 3. Copy/Paste Location Picker
 - [ ] Copy location data (lat/lon/alt/name) to clipboard as text/JSON
 - [ ] Paste from clipboard into location picker / add location form
 - [ ] Format: "Name, Lat, Lon, Alt" or JSON for easy sharing
 
-### 3. Phone Level Indicator
+### 4. Phone Level Indicator
 - [ ] Show pitch/roll from DeviceOrientation (beta/gamma)
 - [ ] Visual: horizontal line with side dashes `|---|`
 - [ ] Green when level (|pitch| < 2° and |roll| < 2°), amber when slightly off, red when crooked
 - [ ] Display in top bar or overlay, updates in real-time
 - [ ] Helps user hold phone level for accurate compass/bearing
 
-### 4. Smooth Marker Animation
+### 5. Smooth Marker Animation
 - [ ] Lerp position between frames for fluid marker movement
-
-### 5. Figure-8 Calibration Detection
-- [ ] Auto-detect figure-8 motion for iOS calibration
 
 ### 6. Map with Location Picker (MapLibre / Leaflet)
 - [ ] Full-screen map overlay, tap to select location
@@ -126,6 +109,7 @@ public/simple/
 
 ## Done ✅ (Recent)
 
+- [x] Compass invert toggle & configurable update rate in Settings
 - [x] Camera settings — default off + settings toggle
 - [x] Compass wheel/dial interaction (rotate to adjust heading offset)
 - [x] Bearing display bar — live compass heading in top bar
@@ -153,6 +137,7 @@ public/simple/
 | Battery drain | Throttle GPS (configurable), pause AR when backgrounded |
 | Android compass parity | Test on Pixel/Samsung; same DeviceOrientation API |
 | HTTPS required for device testing | Use simple-server.cjs with self-signed cert |
+| DeviceOrientation API deprecated | Migrate to OrientationSensor API |
 
 ---
 

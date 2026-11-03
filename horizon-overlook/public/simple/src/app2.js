@@ -37,7 +37,6 @@ const gpsLonEl = document.getElementById('gps-lon');
 const gpsAltEl = document.getElementById('gps-alt');
 const gpsAccEl = document.getElementById('gps-acc');
 const gpsCompassEl = document.getElementById('gps-compass');
-const gpsBearingRow = document.getElementById('gps-bearing-row');
 const gpsBearingEl = document.getElementById('gps-bearing');
 // Generic Location Picker (reused for add location, track location)
 const locationPickerOverlay = document.getElementById('location-picker-overlay');
@@ -62,11 +61,18 @@ const versionBadge = document.getElementById('version-badge');
 // Camera settings
 const cameraEnabledCheckbox = document.getElementById('camera-enabled');
 const cameraDefaultOnCheckbox = document.getElementById('camera-default-on');
+// Compass settings
+const compassInvertCheckbox = document.getElementById('compass-invert');
+const compassRateSlider = document.getElementById('compass-rate');
+const compassRateValue = document.getElementById('compass-rate-value');
+const compassAutoCalibrateCheckbox = document.getElementById('compass-auto-calibrate');
 
 // Compass dial interaction state
 let compassDialActive = false;
 let compassDialStartAngle = 0;
 let compassDialStartOffset = 0;
+let compassPermissionRequested = false;
+let compassModule = null;
 
 // State
 let userPosition = null;
@@ -79,6 +85,12 @@ let trackedLocationId = null; // Currently tracked location
 let overlay = null;
 let compassCanvas = null;
 let compassCtx = null;
+
+// Compass orientation fix: some browsers report alpha inverted or offset
+// 1 = normal, -1 = inverted (flip direction)
+let compassDirection = 1; // Set to -1 if compass reads backwards
+// Compass zero offset: adjust if North isn't at 0°
+let compassZeroOffset = 0;
 
 // Debug function (module scope so callbacks can use it)
 function debug(msg) {
@@ -145,6 +157,26 @@ function handleCompassDialEnd(e) {
   debug(`Compass dial ended: offset=${headingOffset.toFixed(1)}°`);
 }
 
+// Request compass permission on user gesture (iOS requirement)
+function requestCompassPermission() {
+  if (compassPermissionRequested) {
+    debug('Compass permission already requested');
+    return Promise.resolve(true);
+  }
+  compassPermissionRequested = true;
+  debug('Requesting compass permission on user gesture...');
+  return compassModule.requestPermission()
+    .then(() => {
+      debug('Compass permission granted');
+      return true;
+    })
+    .catch(err => {
+      debug('Compass permission error: ' + err.message);
+      showError(`Compass permission denied. Enable in Settings > Safari > Motion & Orientation Access.`);
+      throw err;
+    });
+}
+
 // Initialize
 async function init() {
   console.log('[App] init() started');
@@ -175,16 +207,9 @@ async function init() {
   // Start camera (default off - user toggles)
   // Camera will be started when user clicks camera toggle button
 
-  // Start compass
-  try {
-    debug('Requesting compass permission...');
-    const compass = startCompass(handleCompassUpdate);
-    await compass.requestPermission();
-    debug('Compass permission granted');
-  } catch (err) {
-    debug('Compass error: ' + err.message);
-    // Don't show error toast - compass is optional, GPS works without it
-  }
+  // Start compass (module only, permission requested on user gesture)
+  compassModule = startCompass(handleCompassUpdate);
+  debug('Compass module initialized (permission on first user gesture)');
 
   // Start GPS
   try {
@@ -223,16 +248,29 @@ async function init() {
   // Event listeners - Current Location button
   if (currentLocationBtn) {
     // Support both click and touch for iOS Safari compatibility
-    currentLocationBtn.addEventListener('click', (e) => {
+    currentLocationBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
       debug('Current location button clicked');
+      // Request compass permission on first user gesture (iOS requirement)
+      try {
+        await requestCompassPermission();
+      } catch (err) {
+        // Permission denied, continue without compass
+        debug('Compass permission failed, continuing without compass');
+      }
       showCurrentLocationOverlay();
     });
-    currentLocationBtn.addEventListener('touchend', (e) => {
+    currentLocationBtn.addEventListener('touchend', async (e) => {
       e.preventDefault();
       e.stopPropagation();
       debug('Current location button touched');
+      // Request compass permission on first user gesture (iOS requirement)
+      try {
+        await requestCompassPermission();
+      } catch (err) {
+        debug('Compass permission failed, continuing without compass');
+      }
       showCurrentLocationOverlay();
     }, { passive: false });
     debug('Current location button event listeners attached');
@@ -452,9 +490,20 @@ function animate() {
 }
 
 function handleCompassUpdate(data) {
-  compassAlpha = data.alpha;
+  debug(`handleCompassUpdate called: alpha=${data.alpha}, absolute=${data.absolute}, beta=${data.beta}, gamma=${data.gamma}`);
+
+  // Apply compass direction fix: some devices report alpha inverted
+  let alpha = data.alpha;
+  if (compassDirection === -1) {
+    // Invert direction: 0->360, 90->270, etc.
+    alpha = (360 - data.alpha) % 360;
+  }
+  // Apply zero offset
+  alpha = (alpha + compassZeroOffset) % 360;
+
+  compassAlpha = alpha;
   compassAbsolute = data.absolute;
-  debug(`Compass: alpha=${data.alpha.toFixed(1)}°, absolute=${data.absolute}`);
+  debug(`Compass: raw=${data.alpha.toFixed(1)}°, fixed=${alpha.toFixed(1)}°, absolute=${data.absolute}, dir=${compassDirection}, offset=${compassZeroOffset}`);
   updateStatus();
   updateBearingDisplay();
   // Update current location overlay if open
@@ -577,6 +626,8 @@ function hideCurrentLocationOverlay() {
 }
 
 function updateCurrentLocationDisplay() {
+  debug(`updateCurrentLocationDisplay: userPosition=${!!userPosition}, compassAlpha=${compassAlpha}, compassAbsolute=${compassAbsolute}, headingOffset=${headingOffset}`);
+
   if (!userPosition) {
     gpsLatEl.textContent = 'Waiting for GPS...';
     gpsLonEl.textContent = '—';
@@ -585,18 +636,33 @@ function updateCurrentLocationDisplay() {
     gpsCompassEl.textContent = compassAlpha !== null
       ? `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`
       : '—';
-    if (gpsBearingRow) gpsBearingRow.style.display = 'none';
+    gpsBearingEl.textContent = '—';
     return;
   }
   gpsLatEl.textContent = userPosition.lat.toFixed(6);
   gpsLonEl.textContent = userPosition.lon.toFixed(6);
   gpsAltEl.textContent = userPosition.alt !== undefined ? `${userPosition.alt.toFixed(1)}m` : '—';
   gpsAccEl.textContent = gpsAccuracy !== null ? `${Math.round(gpsAccuracy)}m` : '—';
+
+  // Compass: raw compass reading
   gpsCompassEl.textContent = compassAlpha !== null
     ? `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`
     : '—';
 
-  // Bearing to tracked location
+  // Bearing: calibrated heading (what you're actually facing)
+  if (compassAlpha !== null) {
+    const calibratedHeading = normalizeBearing(compassAlpha - headingOffset);
+    const cardinals = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    const cardIndex = Math.round(calibratedHeading / 22.5) % 16;
+    const cardinal = cardinals[cardIndex < 0 ? cardIndex + 16 : cardIndex];
+    gpsBearingEl.textContent = `${cardinal} ${Math.round(calibratedHeading)}°`;
+    debug(`Bearing set: ${cardinal} ${Math.round(calibratedHeading)}° (compassAlpha=${compassAlpha}, offset=${headingOffset})`);
+  } else {
+    gpsBearingEl.textContent = '—';
+    debug('No compassAlpha, bearing set to —');
+  }
+
+  // Bearing to tracked location (relative bearing)
   if (trackedLocationId && compassAlpha !== null) {
     const targetLoc = locations.find(l => l.id === trackedLocationId);
     if (targetLoc) {
@@ -606,13 +672,8 @@ function updateCurrentLocationDisplay() {
       const cardinals = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
       const cardIndex = Math.round(relBearing / 22.5) % 16;
       const cardinal = cardinals[cardIndex < 0 ? cardIndex + 16 : cardIndex];
-      gpsBearingEl.textContent = `${cardinal} ${Math.round(relBearing)}° • ${formatDistance(distance)}`;
-      gpsBearingRow.style.display = 'grid';
-    } else {
-      gpsBearingRow.style.display = 'none';
+      gpsBearingEl.textContent = `${cardinal} ${Math.round(relBearing)}° → ${targetLoc.name} (${formatDistance(distance)})`;
     }
-  } else {
-    gpsBearingRow.style.display = 'none';
   }
 }
 
