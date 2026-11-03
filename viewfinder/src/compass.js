@@ -108,40 +108,59 @@ export function startCompass(onHeadingChange, options = {}) {
   // Fallback: DeviceOrientation API (iOS Safari, older browsers)
   const fallbackDeviceOrientation = () => {
     let hasPermission = false;
+    let lastAbsoluteAt = 0; // dedupe: absolute events win over relative ones
 
-    const handleOrientation = (event) => {
-      if (event.alpha === null) return;
+    /**
+     * Extract the best available heading from a DeviceOrientation event.
+     *
+     * Priority:
+     * 1. iOS `webkitCompassHeading` — magnetometer true-north heading
+     *    (absolute). iOS Safari never fires `deviceorientationabsolute`
+     *    and its `alpha` is relative, so this is the ONLY way to get an
+     *    absolute bearing on iOS.
+     * 2. `deviceorientationabsolute` event alpha — absolute heading
+     *    (Android Chrome without the sensor API).
+     * 3. `deviceorientation` alpha — relative heading (last resort).
+     */
+    const extractHeading = (event) => {
+      if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
+        return { heading: event.webkitCompassHeading, absolute: true, source: 'webkitCompassHeading' };
+      }
+      if (event.absolute === true && event.alpha !== null) {
+        return { heading: event.alpha, absolute: true, source: 'absolute-event' };
+      }
+      return { heading: event.alpha, absolute: false, source: 'relative-event' };
+    };
+
+    const emitHeading = (event) => {
+      const { heading, absolute, source } = extractHeading(event);
+      if (heading === null || heading === undefined) return;
+
+      // Dedupe: when both event types fire (Android fallback), don't let a
+      // relative reading clobber a recent absolute one (webkitCompassHeading
+      // and deviceorientationabsolute both count as absolute sources).
+      if (absolute) {
+        lastAbsoluteAt = Date.now();
+      } else if (Date.now() - lastAbsoluteAt < 2000) {
+        return;
+      }
 
       const now = Date.now();
       if (now - lastUpdate < updateRate) return;
       lastUpdate = now;
 
       onHeadingChange({
-        alpha: event.alpha,
+        alpha: heading,
         beta: event.beta,
         gamma: event.gamma,
-        absolute: event.absolute,
+        absolute,
         isLevel: Math.abs(event.beta) < 5 && Math.abs(event.gamma) < 5,
         timestamp: Date.now(),
       });
     };
 
-    const handleOrientationFallback = (event) => {
-      if (event.alpha === null) return;
-
-      const now = Date.now();
-      if (now - lastUpdate < updateRate) return;
-      lastUpdate = now;
-
-      onHeadingChange({
-        alpha: event.alpha,
-        beta: event.beta,
-        gamma: event.gamma,
-        absolute: false,
-        isLevel: Math.abs(event.beta) < 5 && Math.abs(event.gamma) < 5,
-        timestamp: Date.now(),
-      });
-    };
+    const handleOrientation = (event) => emitHeading(event);           // deviceorientationabsolute
+    const handleOrientationFallback = (event) => emitHeading(event);   // deviceorientation
 
     const requestPermission = async () => {
       if ('DeviceOrientationEvent' in window &&

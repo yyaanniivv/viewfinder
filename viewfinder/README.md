@@ -24,12 +24,12 @@ A **toposcope** (also called an **orientation plaque**, **orientation table**, o
 | API | iOS Safari | Android Chrome | Desktop Chrome |
 |-----|------------|----------------|----------------|
 | getUserMedia | ✅ 11+ | ✅ 53+ | ✅ |
-| DeviceOrientation | ✅ 13+ (permission) | ✅ 3+ | ❌ No native compass |
+| OrientationSensor / compass | ✅ via `webkitCompassHeading` | ✅ AbsoluteOrientationSensor | ❌ No native compass |
 | Geolocation | ✅ 5+ | ✅ 5+ | ✅ (mock) |
 | Canvas 2D | ✅ Always | ✅ Always | ✅ |
-| **Full Functionality** | ❌ **No** | ✅ **Yes** | ⚠️ Partial |
+| **Full Functionality** | ⚠️ Absolute via webkitCompassHeading | ✅ **Yes** | ⚠️ Partial |
 
-**⚠️ Important:** iOS Safari does **not** provide reliable DeviceOrientation absolute heading (true north) — it only gives relative heading. This makes compass calibration unreliable on iOS. **Android Chrome is the recommended platform** for full functionality. Desktop Chrome works for UI testing but lacks real compass data.
+**Note on absolute heading (true north):** Android Chrome provides it via the `AbsoluteOrientationSensor` API (preferred path). iOS Safari doesn't support that API, but its `deviceorientation` events carry `webkitCompassHeading` — the magnetometer's true-north heading — which the app uses as the absolute bearing on iOS. Devices with neither (older browsers, desktop) fall back to relative `alpha` heading, where the landmark calibration flow compensates.
 
 ## Use Cases
 

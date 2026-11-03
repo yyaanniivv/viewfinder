@@ -20,7 +20,7 @@
 | Canvas overlay (2D drawing) | ✅ | Horizon line, compass ticks, markers |
 | Horizon markers | ✅ | Triangle ticks at horizon line; name+distance boxes below, staggered rows to avoid overlap |
 | GPS position (`watchPosition`) | ✅ | High accuracy, altitude, accuracy |
-| Compass heading (`DeviceOrientation`) | ✅ | iOS permission handled |
+| Compass heading | ✅ | Hybrid: AbsoluteOrientationSensor (Android) → `webkitCompassHeading` absolute (iOS) → relative alpha fallback |
 | Bearing math (haversine) | ✅ | Core geo.js — pure, tested |
 | Location CRUD + localStorage | ✅ | 5 Tel Aviv samples included |
 | Calibration (offset) | ✅ | Tap compass → select landmark → calibrate |
@@ -138,7 +138,7 @@ viewfinder/
 
 | Risk | Mitigation |
 |------|------------|
-| iOS Safari compass accuracy | Calibration flow + figure-8 detection (planned) |
+| iOS Safari compass accuracy | `webkitCompassHeading` gives absolute heading; calibration flow refines it; figure-8 detection (planned) |
 | GPS altitude unreliable | Manual altitude override in location edit (exists) |
 | Battery drain | Throttle GPS (configurable), pause AR when backgrounded |
 | Android compass parity | Test on Pixel/Samsung; same DeviceOrientation API |
