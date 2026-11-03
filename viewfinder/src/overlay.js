@@ -1,12 +1,16 @@
 /**
  * Canvas overlay drawing for Viewfinder
- * Draws horizon line, compass ticks, and location markers
+ * Draws horizon line, compass ticks, location markers, and level indicator
  */
 
 import { normalizeBearing, formatDistance, haversineDistance, bearing } from './geo.js';
 
 const FOV_DEG = 90; // Horizontal field of view assumption
 const HORIZON_Y_RATIO = 0.5; // Horizon at vertical center
+
+// Level indicator thresholds (degrees)
+const LEVEL_GREEN = 2;
+const LEVEL_AMBER = 5;
 
 export class Overlay {
   constructor(canvas, options = {}) {
@@ -17,6 +21,10 @@ export class Overlay {
     this.compassHeading = options.compassHeading || 0;
     this.headingOffset = options.headingOffset || 0;
     this.isCalibrated = options.isCalibrated || false;
+    // Level indicator
+    this.showLevel = options.showLevel !== false; // default on
+    this.pitch = null;   // front-to-back tilt (beta), degrees
+    this.roll = null;    // left-to-right tilt (gamma), degrees
     this.horizonY = null;
     this.pxPerDeg = null;
     this.centerX = null;
@@ -42,6 +50,9 @@ export class Overlay {
     if (data.compassHeading !== undefined) this.compassHeading = data.compassHeading;
     if (data.headingOffset !== undefined) this.headingOffset = data.headingOffset;
     if (data.isCalibrated !== undefined) this.isCalibrated = data.isCalibrated;
+    if (data.pitch !== undefined) this.pitch = data.pitch;
+    if (data.roll !== undefined) this.roll = data.roll;
+    if (data.showLevel !== undefined) this.showLevel = data.showLevel;
   }
 
   draw() {
@@ -60,6 +71,11 @@ export class Overlay {
     // Draw location markers
     this.drawMarkers(w);
 
+    // Draw level indicator (center, wide — helps align device while panning)
+    if (this.showLevel && this.pitch !== null && this.roll !== null) {
+      this.drawLevel(w, h);
+    }
+
     // Draw calibration status
     if (!this.isCalibrated) {
       this.drawUncalibratedWarning(w);
@@ -76,6 +92,98 @@ export class Overlay {
     ctx.lineTo(w, this.horizonY);
     ctx.stroke();
     ctx.setLineDash([]);
+  }
+
+  /**
+   * Wide centered level indicator, drawn below the horizon line.
+   *
+   * Roll: horizontal gauge with a moving bubble (like a spirit level)
+   * Pitch: the gauge frame shifts vertically with pitch against a fixed
+   *   dashed reference line — both axes readable at a glance while panning.
+   * Color: green |pitch|<2 && |roll|<2, amber <5, red beyond.
+   */
+  drawLevel(w, h) {
+    const { ctx } = this;
+    const gaugeWidth = Math.min(w * 0.55, 420);   // wide, but bounded
+    const gaugeHalf = gaugeWidth / 2;
+    const cx = this.centerX;
+    const cy = h * 0.62;                           // below the horizon line
+    const MAX_TILT = 10;                           // degrees at full deflection
+    const MAX_SHIFT = 22;                          // px of vertical pitch shift
+
+    // Clamp for display
+    const roll = Math.max(-MAX_TILT, Math.min(MAX_TILT, this.roll));
+    const pitch = Math.max(-MAX_TILT, Math.min(MAX_TILT, this.pitch));
+
+    // Color by worst axis
+    const worst = Math.max(Math.abs(this.pitch), Math.abs(this.roll));
+    const color = worst < LEVEL_GREEN ? '#06D6A0' : worst < LEVEL_AMBER ? '#FFBE0B' : '#FF6B6B';
+
+    ctx.save();
+
+    // --- Roll gauge: frame + bubble (frame shifts vertically with pitch) ---
+    const frameY = cy - (pitch / MAX_TILT) * MAX_SHIFT;
+
+    // End posts |-----|
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 3;
+    const postH = 10;
+    for (const x of [cx - gaugeHalf, cx + gaugeHalf]) {
+      ctx.beginPath();
+      ctx.moveTo(x, frameY - postH);
+      ctx.lineTo(x, frameY + postH);
+      ctx.stroke();
+    }
+
+    // Guide line between posts
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - gaugeHalf, frameY);
+    ctx.lineTo(cx + gaugeHalf, frameY);
+    ctx.stroke();
+
+    // Center tick on the frame
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, frameY - 8);
+    ctx.lineTo(cx, frameY + 8);
+    ctx.stroke();
+
+    // Bubble (moves with roll)
+    const bubbleX = cx - (roll / MAX_TILT) * gaugeHalf;
+    const bubbleR = 8;
+    ctx.beginPath();
+    ctx.arc(bubbleX, frameY, bubbleR, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.9;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // --- Fixed dashed reference line (the true level target) ---
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(cx - gaugeHalf - 20, cy);
+    ctx.lineTo(cx + gaugeHalf + 20, cy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Small readout
+    ctx.font = '11px ui-monospace, monospace';
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const p = this.pitch >= 0 ? '+' : '';
+    const r = this.roll >= 0 ? '+' : '';
+    ctx.fillText(`P${p}${this.pitch.toFixed(0)}° R${r}${this.roll.toFixed(0)}°`, cx, cy + 14);
+
+    ctx.restore();
   }
 
   drawCompassTicks(w) {

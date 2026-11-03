@@ -7,6 +7,7 @@ import { Overlay } from './overlay.js';
 import { startCamera } from './camera.js';
 import { startCompass } from './compass.js';
 import { startGPS } from './gps.js';
+
 import { getLocations, saveLocations, SAMPLE_LOCATIONS, createLocation, generateId, getNextColor, LOCATION_COLORS, LOCATION_TYPES, getTypeEmoji } from './storage.js';
 import { loadCalibration, saveCalibration, computeHeadingOffset, hasValidCalibration } from './calibration.js';
 import { normalizeBearing, formatDistance, haversineDistance, bearing } from './geo.js';
@@ -63,6 +64,9 @@ const compassAutoCalibrateCheckbox = document.getElementById('compass-auto-calib
 // Level indicator
 const levelIndicatorToggle = document.getElementById('toggle-level-indicator');
 const levelIndicatorCanvas = document.getElementById('level-indicator');
+// GPS settings
+const gpsRateSlider = document.getElementById('gps-rate');
+const gpsRateValue = document.getElementById('gps-rate-value');
 // Calibration overlay
 const calibrationOverlay = document.getElementById('calibration-overlay');
 const statusCompassEl = document.getElementById('status-compass');
@@ -73,6 +77,7 @@ let compassDialStartAngle = 0;
 let compassDialStartOffset = 0;
 let compassPermissionRequested = false;
 let compassModule = null;
+let gpsModule = null;
 
 // State
 let userPosition = null;
@@ -265,12 +270,13 @@ async function init() {
       debug('Compass init failed: ' + err.message);
     });
 
-  // Start GPS
+  // Start GPS (throttled; rate configurable in settings, default 10s)
   try {
+    const gpsRate = parseInt(gpsRateSlider?.value || '10000');
     debug('Starting GPS...');
-    const gps = startGPS(handleGPSUpdate, handleGPSError);
-    debug('GPS watch started, watchId returned');
-    window.__gpsWatch = gps;
+    gpsModule = startGPS(handleGPSUpdate, handleGPSError, { updateRateMs: gpsRate });
+    debug(`GPS watch started (rate: ${gpsRate / 1000}s)`);
+    window.__gpsWatch = gpsModule;
   } catch (err) {
     debug('GPS error: ' + err.message);
   }
@@ -486,6 +492,17 @@ async function init() {
     debug(`Level indicator: ${levelIndicatorEnabled ? 'on' : 'off'}`);
   });
 
+  // GPS rate slider
+  gpsRateSlider?.addEventListener('input', (e) => {
+    const rateMs = parseInt(e.target.value);
+    gpsRateValue.textContent = `${rateMs / 1000}s`;
+    localStorage.setItem('viewfinder:gpsRate', rateMs);
+    if (gpsModule && gpsModule.setUpdateRate) {
+      gpsModule.setUpdateRate(rateMs);
+    }
+    debug(`GPS update rate: ${rateMs / 1000}s`);
+  });
+
   // Load saved visibility preferences
   const showLocations = localStorage.getItem('viewfinder:showLocations');
   if (showLocations !== null) {
@@ -560,6 +577,15 @@ async function init() {
     debug(`Loaded level indicator: ${levelIndicatorEnabled ? 'on' : 'off'}`);
   }
 
+  // Load GPS rate preference (default 10s)
+  const gpsRatePref = localStorage.getItem('viewfinder:gpsRate');
+  if (gpsRatePref !== null) {
+    const rateMs = parseInt(gpsRatePref);
+    gpsRateSlider.value = rateMs;
+    gpsRateValue.textContent = `${rateMs / 1000}s`;
+    debug(`Loaded GPS rate: ${rateMs / 1000}s`);
+  }
+
   // GPS Status click-to-copy: copies "lat,lon,alt" to clipboard
   if (statusGPS) {
     statusGPS.style.cursor = 'pointer';
@@ -605,6 +631,9 @@ function animate() {
       compassHeading: compassAlpha || 0,
       headingOffset,
       isCalibrated,
+      pitch: levelPitch,
+      roll: levelRoll,
+      showLevel: levelIndicatorEnabled,
     });
     overlay.draw();
   }
@@ -678,7 +707,6 @@ async function toggleCamera() {
       debug('Starting camera...');
       cameraStream = await startCamera(video);
       video.style.display = 'block';
-      canvas.style.display = 'block';
       cameraToggleBtn.textContent = '📷';
       cameraToggleBtn.classList.remove('off');
       cameraToggleBtn.title = 'Turn off camera';
@@ -696,7 +724,6 @@ async function toggleCamera() {
       cameraStream = null;
     }
     video.style.display = 'none';
-    canvas.style.display = 'none';
     cameraToggleBtn.textContent = '📷';
     cameraToggleBtn.classList.add('off');
     cameraToggleBtn.title = 'Turn on camera';
@@ -727,7 +754,7 @@ function updateStatus() {
     }
   }
 
-  // Update level indicator (text status) — hidden when the bubble gauge is active
+  // Update level indicator (text status) — hidden when the overlay gauge is active
   const statusLevel = document.getElementById('status-level');
   if (statusLevel) {
     const isLevel = window.compassIsLevel;
@@ -740,86 +767,6 @@ function updateStatus() {
       statusLevel.style.display = 'none';
     }
   }
-
-  // Update visual bubble level indicator
-  drawLevelIndicator();
-}
-
-/**
- * Visual level indicator: bubble gauge showing pitch/roll.
- * Horizontal line with a bubble that moves with tilt.
- * Green |pitch|<2° & |roll|<2°, amber <5°, red beyond.
- */
-function drawLevelIndicator() {
-  if (!levelIndicatorCanvas) return;
-
-  const show = levelIndicatorEnabled && levelPitch !== null;
-  levelIndicatorCanvas.style.display = show ? 'block' : 'none';
-  if (!show) return;
-
-  const ctx = levelIndicatorCanvas.getContext('2d');
-  const w = levelIndicatorCanvas.width;
-  const h = levelIndicatorCanvas.height;
-  const centerX = w / 2;
-  const centerY = h / 2;
-
-  ctx.clearRect(0, 0, w, h);
-
-  // Clamp tilt to ±10° for bubble travel
-  const MAX_TILT = 10;
-  const pitch = Math.max(-MAX_TILT, Math.min(MAX_TILT, levelPitch));
-  const roll = Math.max(-MAX_TILT, Math.min(MAX_TILT, levelRoll));
-
-  // Color by worst axis
-  const worst = Math.max(Math.abs(levelPitch), Math.abs(levelRoll));
-  const color = worst < 2 ? '#06D6A0' : worst < 5 ? '#FFBE0B' : '#FF6B6B';
-
-  // Gauge frame: horizontal guide line with end dashes |---|
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-  ctx.lineWidth = 2;
-  const lineHalf = w / 2 - 14;
-  ctx.beginPath();
-  ctx.moveTo(centerX - lineHalf, centerY);
-  ctx.lineTo(centerX + lineHalf, centerY);
-  ctx.stroke();
-
-  // End dashes
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(centerX - lineHalf, centerY - 5);
-  ctx.lineTo(centerX - lineHalf, centerY + 5);
-  ctx.moveTo(centerX + lineHalf, centerY - 5);
-  ctx.lineTo(centerX + lineHalf, centerY + 5);
-  ctx.stroke();
-
-  // Center tick (target)
-  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(centerX, centerY - 8);
-  ctx.lineTo(centerX, centerY + 8);
-  ctx.stroke();
-
-  // Bubble: horizontal position = roll (left/right tilt),
-  // vertical = pitch (front/back tilt). Bubble moves opposite to tilt,
-  // like a real spirit level.
-  const bubbleX = centerX - (roll / MAX_TILT) * lineHalf;
-  const bubbleY = centerY - (pitch / MAX_TILT) * 14;
-
-  ctx.beginPath();
-  ctx.arc(bubbleX, bubbleY, 6, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  // Degree readout
-  ctx.font = '10px ui-monospace, monospace';
-  ctx.fillStyle = color;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText(`P${levelPitch >= 0 ? '+' : ''}${levelPitch.toFixed(0)}° R${levelRoll >= 0 ? '+' : ''}${levelRoll.toFixed(0)}°`, centerX, centerY + 12);
 }
 
 function updateBearingDisplay() {

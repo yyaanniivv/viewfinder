@@ -19,7 +19,7 @@
   <video id="camera" autoplay playsinline muted style="display: none;"></video>
 
   <!-- Canvas overlay for markers -->
-  <canvas id="overlay" aria-label="Horizon markers overlay" style="display: none;"></canvas>
+  <canvas id="overlay" aria-label="Horizon markers overlay"></canvas>
 
   <!-- Top bar: Compass + Bearing + Status + Camera Toggle -->
   <div class="top-bar">
@@ -38,9 +38,6 @@
       <div id="status-compass" class="warn">🧭 Relative</div>
       <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
     </div>
-
-    <!-- Visual level indicator (bubble gauge) -->
-    <canvas id="level-indicator" width="120" height="44" style="display: none;" aria-label="Phone level indicator"></canvas>
 
     <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
       📷
@@ -104,6 +101,17 @@
             <input type="checkbox" id="toggle-level-indicator" checked>
             <span>Level Indicator</span>
           </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>GPS</h3>
+        <div class="setting-row">
+          <label for="gps-rate">Update Rate</label>
+          <div class="slider-container">
+            <input type="range" id="gps-rate" min="1000" max="20000" step="1000" value="10000">
+            <span id="gps-rate-value">10s</span>
+          </div>
         </div>
       </div>
 

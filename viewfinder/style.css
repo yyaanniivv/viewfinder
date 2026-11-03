@@ -914,26 +914,3 @@ select {
     max-width: 100%;
   }
 }
-
-/* Visual level indicator (bubble gauge in top bar) */
-#level-indicator {
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 8px) + 8px);
-  right: 86px;
-  z-index: 15;
-  width: 120px;
-  height: 44px;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  backdrop-filter: blur(4px);
-  pointer-events: none;
-}
-
-@media (max-width: 480px) {
-  #level-indicator {
-    width: 100px;
-    height: 40px;
-    right: 64px;
-  }
-}

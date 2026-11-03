@@ -32,7 +32,8 @@
 | Compass update rate | ✅ | Configurable 50-2000ms slider |
 | Compass zero offset | ✅ | 0-360° slider (180° fixes N/S) |
 | Level detection | ✅ | Status bar shows Level/Tilted via beta/gamma |
-| Level indicator (visual) | ✅ | Bubble gauge in top bar; green <2°, amber <5°, red beyond; settings toggle |
+| Level indicator (visual) | ✅ | Wide bubble gauge centered below horizon line; green <2°, amber <5°, red beyond; settings toggle |
+| GPS refresh rate setting | ✅ | 1-20s slider (default 10s); throttles watchPosition, persisted, live-apply |
 | Scrollable settings pane | ✅ | Settings panel scrolls when content exceeds 80vh |
 
 ### File Structure
@@ -68,8 +69,9 @@ viewfinder/
 - [ ] **Auto-switch compass/level mode** — When phone points down → compass, raised → level bar
 
 ### 2. GPS Refresh Rate Setting
-- [ ] Slider/bar in settings: 200ms to 20s (default 1000ms)
-- [ ] Throttles `watchPosition` updates to save battery
+- [x] Slider in settings: 1s to 20s (default 10s)
+- [x] Throttles `watchPosition` updates to save battery
+- [x] Live-apply via setUpdateRate (restarts watch, next fix passes immediately)
 
 ### 3. Copy/Paste Location Picker
 - [ ] Copy location data (lat/lon/alt/name) to clipboard as text/JSON
@@ -78,10 +80,10 @@ viewfinder/
 
 ### 4. Phone Level Indicator (Visual)
 - [x] Show pitch/roll from DeviceOrientation (beta/gamma)
-- [x] Visual: bubble gauge with horizontal guide line `|---|`
+- [x] Visual: wide centered bubble gauge below horizon line `|---|`
 - [x] Green when level (|pitch| < 2° and |roll| < 2°), amber when slightly off, red when crooked
-- [x] Display in top bar, updates in real-time
-- [x] Helps user hold phone level for accurate compass/bearing
+- [x] Display centered on overlay, updates in real-time — helps align device while panning for POI
+- [x] Pitch shifts gauge frame vertically against fixed dashed reference line
 - [x] Settings toggle to show/hide (persisted)
 
 ### 5. Smooth Marker Animation
@@ -96,6 +98,9 @@ viewfinder/
 
 ## Done ✅ (Recent)
 
+- [x] GPS refresh rate setting (1-20s, default 10s) — throttle + live-apply
+- [x] Level indicator moved to wide centered gauge on overlay (below horizon)
+- [x] Overlay canvas always visible (level gauge works without camera)
 - [x] Port app2 features into viewfinder (single app: settings, camera toggle, dial, debug pane, current-location overlay, hybrid compass)
 - [x] Scrollable settings pane (max-height 80vh + overflow-y)
 - [x] Visual level indicator (bubble gauge) with settings toggle
