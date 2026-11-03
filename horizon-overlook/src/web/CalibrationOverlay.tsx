@@ -27,6 +27,12 @@ export const CalibrationOverlay: React.FC<CalibrationOverlayProps> = ({
   const [instruction, setInstruction] = useState('Select a location you can see, then point your phone at it and tap "Calibrate"');
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [calibrationResult, setCalibrationResult] = useState<{
+    offset: number;
+    userLat: number;
+    userLon: number;
+    timestamp: number;
+  } | null>(null);
 
   // Auto-select first location if available
   useEffect(() => {
@@ -43,19 +49,29 @@ export const CalibrationOverlay: React.FC<CalibrationOverlayProps> = ({
 
     setIsCalibrating(true);
     setError(null);
+    setCalibrationResult(null);
 
     try {
       const offset = computeHeadingOffset(compassAlpha, userPosition, selectedLocation);
+      const now = Date.now();
 
       const calData: CalibrationData = {
         headingOffset: offset,
-        calibratedAt: Date.now(),
+        calibratedAt: now,
         landmarkName: selectedLocation.name,
         landmarkPosition: selectedLocation,
       };
 
       saveCalibration(calData);
       onCalibrated(offset);
+
+      // Show calibration result with user location and timestamp
+      setCalibrationResult({
+        offset,
+        userLat: userPosition.lat,
+        userLon: userPosition.lon,
+        timestamp: now,
+      });
       setInstruction(`Calibrated using ${selectedLocation.name}! Offset: ${offset.toFixed(1)}°`);
 
       setTimeout(() => {
@@ -73,6 +89,12 @@ export const CalibrationOverlay: React.FC<CalibrationOverlayProps> = ({
   const bearingToLocation = userPosition && selectedLocation
     ? bearing(userPosition, selectedLocation).toFixed(1)
     : '—';
+
+  // Format timestamp
+  const formatTime = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
 
   return (
     <div style={styles.overlay}>
@@ -120,6 +142,39 @@ export const CalibrationOverlay: React.FC<CalibrationOverlayProps> = ({
             </span>
           </div>
         </div>
+
+        {/* Calibration result with user location */}
+        {calibrationResult && (
+          <div style={styles.resultBox}>
+            <h3 style={styles.resultTitle}>Calibration Successful</h3>
+            <div style={styles.resultGrid}>
+              <div style={styles.resultItem}>
+                <span style={styles.resultLabel}>Compass Offset</span>
+                <span style={styles.resultValue}>{calibrationResult.offset.toFixed(2)}°</span>
+              </div>
+              <div style={styles.resultItem}>
+                <span style={styles.resultLabel}>Your Latitude</span>
+                <span style={styles.resultValue}>{calibrationResult.userLat.toFixed(6)}°</span>
+              </div>
+              <div style={styles.resultItem}>
+                <span style={styles.resultLabel}>Your Longitude</span>
+                <span style={styles.resultValue}>{calibrationResult.userLon.toFixed(6)}°</span>
+              </div>
+              <div style={styles.resultItem}>
+                <span style={styles.resultLabel}>Calibrated At</span>
+                <span style={styles.resultValue}>{formatTime(calibrationResult.timestamp)}</span>
+              </div>
+              <div style={styles.resultItem}>
+                <span style={styles.resultLabel}>Landmark</span>
+                <span style={styles.resultValue}>{selectedLocation?.name}</span>
+              </div>
+              <div style={styles.resultItem}>
+                <span style={styles.resultLabel}>True Bearing</span>
+                <span style={styles.resultValue}>{bearingToLocation}°</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && <p style={styles.error}>{error}</p>}
 
@@ -271,5 +326,41 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '13px',
     color: '#888',
     textAlign: 'center',
+  },
+  resultBox: {
+    marginTop: '16px',
+    padding: '16px',
+    background: 'rgba(78, 205, 196, 0.15)',
+    border: '1px solid rgba(78, 205, 196, 0.3)',
+    borderRadius: '8px',
+  },
+  resultTitle: {
+    margin: '0 0 12px',
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#4ECDC4',
+    textAlign: 'center',
+  },
+  resultGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '8px',
+  },
+  resultItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  resultLabel: {
+    fontSize: '10px',
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  resultValue: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#FFFFFF',
+    fontFamily: 'monospace',
   },
 };

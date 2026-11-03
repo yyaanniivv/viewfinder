@@ -128,6 +128,8 @@ horizon-overlook-native/
   - Add: Rotate finger on compass ring to manually adjust heading offset
   - Visual feedback: ring rotates, offset value updates
   - Useful for fine-tuning calibration without landmark
+  - if mobile is "level"(on a desk, pointing tothe ground) i want it to be a compass like. once we raise it i want
+  the compass to turn into a level bar
 
 - [ ] **Map with location picker** (MapLibre / Leaflet)
   - Full-screen map overlay (triggered from location picker)
@@ -157,6 +159,17 @@ horizon-overlook-native/
   - Green when level (|pitch| < 2° and |roll| < 2°), amber when slightly off, red when crooked
   - Display in top bar or overlay, updates in real-time
   - Helps user hold phone level for accurate compass/bearing
+
+- [ ] **Auto-minimize locations panel on selection**
+  - When user taps a location in the list → auto-minimize panel
+  - Keeps UI clean, shows more camera view
+  - Optional: setting to enable/disable this behavior
+
+- [ ] **Fix: Current Location pane issues**
+  - Overlay not opening / displaying correctly on some devices
+  - Debug: check event listener on current-location-btn
+  - Verify GPS/compass data populates correctly
+  - Test on iOS Safari (permission flow may block)
 
 ### Low Priority / Nice to Have
 

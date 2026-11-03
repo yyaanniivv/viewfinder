@@ -9,6 +9,7 @@ interface LocationListProps {
   onUpdateLocation: (id: string, updates: Partial<Location>) => void;
   onDeleteLocation: (id: string) => void;
   onSelectLocation: (location: Location) => void;
+  autoMinimize?: boolean; // Auto-minimize panel on location selection
 }
 
 const LOCATION_TYPES = ['building', 'landmark', 'poi', 'custom'] as const;
@@ -23,9 +24,11 @@ export const LocationList: React.FC<LocationListProps> = ({
   onUpdateLocation,
   onDeleteLocation,
   onSelectLocation,
+  autoMinimize = false,
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     lat: '',
@@ -105,9 +108,19 @@ export const LocationList: React.FC<LocationListProps> = ({
     <div style={styles.panel}>
       <div style={styles.header}>
         <h3 style={styles.title}>Locations ({locations.length})</h3>
-        <button style={styles.addButton} onClick={() => { resetForm(); setIsAdding(true); setEditingId(null); }}>
-          + Add Location
-        </button>
+        <div style={styles.headerControls}>
+          <button
+            style={isMinimized ? styles.maximizeButton : styles.minimizeButton}
+            onClick={() => setIsMinimized(!isMinimized)}
+            aria-label={isMinimized ? 'Maximize locations panel' : 'Minimize locations panel'}
+            title={isMinimized ? 'Maximize' : 'Minimize'}
+          >
+            {isMinimized ? '□' : '−'}
+          </button>
+          <button style={styles.addButton} onClick={() => { resetForm(); setIsAdding(true); setEditingId(null); }}>
+            + Add Location
+          </button>
+        </div>
       </div>
 
       {isAdding && (
@@ -211,9 +224,14 @@ export const LocationList: React.FC<LocationListProps> = ({
         {locations.length === 0 && !isAdding && (
           <p style={styles.empty}>No locations added yet. Tap "Add Location" to get started.</p>
         )}
-        {locations.map(location => (
+        {!isMinimized && locations.map(location => (
           <div key={location.id} style={styles.locationItem}>
-            <div style={styles.locationInfo} onClick={() => onSelectLocation(location)}>
+            <div style={styles.locationInfo} onClick={() => {
+              onSelectLocation(location);
+              if (autoMinimize) {
+                setIsMinimized(true);
+              }
+            }}>
               <div
                 style={{
                   ...styles.colorDot,
@@ -252,6 +270,9 @@ export const LocationList: React.FC<LocationListProps> = ({
           </div>
         ))}
       </div>
+      {isMinimized && (
+        <div style={styles.minimizedHint}>Tap to expand</div>
+      )}
     </div>
   );
 };
@@ -428,5 +449,41 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     opacity: 0.7,
     transition: 'opacity 0.2s',
+  },
+  headerControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  minimizeButton: {
+    padding: '4px 10px',
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#FFFFFF',
+    background: 'rgba(255,255,255,0.1)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    lineHeight: 1,
+  },
+  maximizeButton: {
+    padding: '4px 10px',
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#FFFFFF',
+    background: '#4ECDC4',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    lineHeight: 1,
+  },
+  minimizedHint: {
+    marginTop: '16px',
+    padding: '12px',
+    textAlign: 'center',
+    color: '#888',
+    fontSize: '14px',
+    cursor: 'pointer',
+    borderTop: '1px solid rgba(255,255,255,0.1)',
   },
 };

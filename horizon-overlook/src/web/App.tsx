@@ -199,11 +199,34 @@ const App: React.FC = () => {
           heading={calibratedHeading}
           isCalibrated={isCalibrated}
           calibrationProgress={needsFigure8 ? calibrationProgress : undefined}
+          onCalibrate={() => setShowCalibration(true)}
         />
 
         <div className="status-indicators">
-          <div className={`gps-status ${gpsAccuracy !== null && gpsAccuracy < CONFIG.MAX_GPS_ACCURACY_M ? 'good' : 'warn'}`}>
-            📍 GPS: {gpsAccuracy ? `${Math.round(gpsAccuracy)}m` : '—'}
+          <div
+            className={`gps-status ${gpsAccuracy !== null && gpsAccuracy < CONFIG.MAX_GPS_ACCURACY_M ? 'good' : 'warn'}`}
+            onClick={() => {
+              if (userPosition) {
+                const lat = userPosition.lat.toFixed(6);
+                const lon = userPosition.lon.toFixed(6);
+                const alt = userPosition.alt !== undefined ? userPosition.alt.toFixed(1) : '0';
+                const coords = `${lat},${lon},${alt}`;
+                navigator.clipboard.writeText(coords).then(() => {
+                  console.log('Copied to clipboard:', coords);
+                  // Could add toast notification here
+                }).catch(err => {
+                  console.error('Clipboard copy failed:', err);
+                });
+              }
+            }}
+            style={{ cursor: userPosition ? 'pointer' : 'default' }}
+            title={userPosition ? 'Click to copy coordinates' : ''}
+          >
+            📍 {userPosition
+              ? `${userPosition.lat.toFixed(4)}, ${userPosition.lon.toFixed(4)}${userPosition.alt !== undefined ? `, ${userPosition.alt.toFixed(0)}m` : ''} ±${gpsAccuracy ? Math.round(gpsAccuracy) : '?'}m`
+              : gpsAccuracy
+                ? `${Math.round(gpsAccuracy)}m`
+                : '—'}
           </div>
           <div className={`compass-status ${compassAbsolute ? 'good' : 'warn'}`}>
             🧭 {compassAbsolute ? 'Absolute' : 'Relative'}
@@ -219,6 +242,7 @@ const App: React.FC = () => {
         onUpdateLocation={handleUpdateLocation}
         onDeleteLocation={handleDeleteLocation}
         onSelectLocation={handleSelectLocation}
+        autoMinimize={true}
       />
 
       {/* Calibration Overlay */}

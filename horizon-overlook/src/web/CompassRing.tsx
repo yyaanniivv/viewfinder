@@ -1,24 +1,28 @@
-import React, { useEffect, useRef } from 'react';
-import { normalizeBearing } from '../core/geo';
+import React, { useEffect, useRef, useState } from 'react';
+import { normalizeBearing, deg2rad } from '../core/geo';
 
 interface CompassRingProps {
   heading: number; // calibrated heading, 0° = North
   isCalibrated: boolean;
   calibrationProgress?: number; // 0-1 for figure-8 progress
+  onCalibrate?: () => void;
 }
 
 /**
  * Compass ring component showing N/E/S/W and current heading
  * Smoothly animates to match phone orientation
+ * Tap compass ring or N/E/S/W labels to calibrate
  */
 export const CompassRing: React.FC<CompassRingProps> = ({
   heading,
   isCalibrated,
   calibrationProgress,
+  onCalibrate,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animatedHeadingRef = useRef(0);
   const animationFrameRef = useRef<number | null>(null);
+  const [showCalibrationHint, setShowCalibrationHint] = useState(false);
 
   // Smooth heading animation
   useEffect(() => {
@@ -32,7 +36,7 @@ export const CompassRing: React.FC<CompassRingProps> = ({
       );
 
       if (canvasRef.current) {
-        drawCompass(canvasRef.current, animatedHeadingRef.current, isCalibrated, calibrationProgress);
+        drawCompass(canvasRef.current, animatedHeadingRef.current, isCalibrated, calibrationProgress, showCalibrationHint);
       }
       animationFrameRef.current = requestAnimationFrame(animate);
     };
@@ -41,14 +45,41 @@ export const CompassRing: React.FC<CompassRingProps> = ({
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [heading, isCalibrated, calibrationProgress]);
+  }, [heading, isCalibrated, calibrationProgress, showCalibrationHint]);
 
   // Initial draw
   useEffect(() => {
     if (canvasRef.current) {
-      drawCompass(canvasRef.current, heading, isCalibrated, calibrationProgress);
+      drawCompass(canvasRef.current, heading, isCalibrated, calibrationProgress, showCalibrationHint);
     }
-  }, [heading, isCalibrated, calibrationProgress]);
+  }, [heading, isCalibrated, calibrationProgress, showCalibrationHint]);
+
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!onCalibrate || isCalibrated) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Convert to canvas coordinates (accounting for display scaling)
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const canvasX = (x * scaleX) - canvas.width / 2;
+    const canvasY = (y * scaleY) - canvas.height / 2;
+
+    // Check if click is on compass ring area (within radius ± 30px)
+    const centerX = 0;
+    const centerY = 0;
+    const radius = Math.min(canvas.width, canvas.height) / 2 - 4;
+    const dist = Math.sqrt(canvasX * canvasX + canvasY * canvasY);
+
+    if (dist >= radius - 30 && dist <= radius + 30) {
+      onCalibrate();
+    }
+  };
 
   return (
     <canvas
@@ -59,8 +90,12 @@ export const CompassRing: React.FC<CompassRingProps> = ({
         width: '120px',
         height: '120px',
         touchAction: 'none',
+        cursor: isCalibrated ? 'default' : 'pointer',
       }}
       aria-label="Compass showing current heading"
+      onClick={handleClick}
+      onMouseEnter={() => !isCalibrated && setShowCalibrationHint(true)}
+      onMouseLeave={() => setShowCalibrationHint(false)}
     />
   );
 };
@@ -69,7 +104,8 @@ function drawCompass(
   canvas: HTMLCanvasElement,
   heading: number,
   isCalibrated: boolean,
-  calibrationProgress?: number
+  calibrationProgress?: number,
+  showHint: boolean = false
 ): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -162,5 +198,14 @@ function drawCompass(
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillText('UNCALIBRATED', centerX, centerY - radius - 8);
+  }
+
+  // Tap to calibrate hint
+  if (showHint && !isCalibrated) {
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255, 190, 11, 0.9)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Tap to calibrate', centerX, centerY + radius + 28);
   }
 }

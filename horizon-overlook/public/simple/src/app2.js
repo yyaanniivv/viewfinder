@@ -159,8 +159,25 @@ async function init() {
   animate();
   debug('Animation loop started');
 
-  // Event listeners
-  currentLocationBtn?.addEventListener('click', () => showCurrentLocationOverlay());
+  // Event listeners - Current Location button
+  if (currentLocationBtn) {
+    // Support both click and touch for iOS Safari compatibility
+    currentLocationBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      debug('Current location button clicked');
+      showCurrentLocationOverlay();
+    });
+    currentLocationBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      debug('Current location button touched');
+      showCurrentLocationOverlay();
+    }, { passive: false });
+    debug('Current location button event listeners attached');
+  } else {
+    debug('ERROR: current-location-btn not found!');
+  }
   setupLocationPickerEvents();
   setupCurrentLocationEvents();
 
@@ -275,6 +292,35 @@ async function init() {
     const show = showCompass === 'true';
     currentLocationBtn.style.display = show ? 'flex' : 'none';
     toggleCompass.checked = show;
+  }
+
+  // GPS Status click-to-copy: copies "lat,lon,alt" to clipboard
+  if (statusGPS) {
+    statusGPS.style.cursor = 'pointer';
+    statusGPS.title = 'Click to copy coordinates';
+    statusGPS.addEventListener('click', () => {
+      if (userPosition) {
+        const lat = userPosition.lat.toFixed(6);
+        const lon = userPosition.lon.toFixed(6);
+        const alt = userPosition.alt !== undefined ? userPosition.alt.toFixed(1) : '0';
+        const coords = `${lat},${lon},${alt}`;
+        navigator.clipboard.writeText(coords).then(() => {
+          debug(`Copied to clipboard: ${coords}`);
+          // Visual feedback
+          const originalText = statusGPS.textContent;
+          statusGPS.textContent = '📋 Copied!';
+          statusGPS.style.color = '#4ECDC4';
+          setTimeout(() => {
+            statusGPS.textContent = originalText;
+            statusGPS.style.color = '';
+          }, 1500);
+        }).catch(err => {
+          debug('Clipboard copy failed: ' + err.message);
+        });
+      } else {
+        debug('No GPS position to copy');
+      }
+    });
   }
 
   debug('init() complete');
@@ -404,12 +450,24 @@ function showError(msg) {
 
 // Current Location Overlay
 function showCurrentLocationOverlay() {
-  currentLocationOverlay.style.display = 'flex';
-  updateCurrentLocationDisplay();
+  debug('showCurrentLocationOverlay called');
+  if (currentLocationOverlay) {
+    currentLocationOverlay.style.display = 'flex';
+    // Force reflow to ensure display is applied
+    currentLocationOverlay.offsetHeight;
+    updateCurrentLocationDisplay();
+    debug('Current location overlay shown');
+  } else {
+    debug('ERROR: currentLocationOverlay element not found!');
+  }
 }
 
 function hideCurrentLocationOverlay() {
-  currentLocationOverlay.style.display = 'none';
+  debug('hideCurrentLocationOverlay called');
+  if (currentLocationOverlay) {
+    currentLocationOverlay.style.display = 'none';
+    debug('Current location overlay hidden');
+  }
 }
 
 function updateCurrentLocationDisplay() {
@@ -453,29 +511,61 @@ function updateCurrentLocationDisplay() {
 }
 
 function setupCurrentLocationEvents() {
-  currentLocationCloseBtn?.addEventListener('click', hideCurrentLocationOverlay);
-  currentLocationUseGpsBtn?.addEventListener('click', () => {
-    // Just close - we're already using GPS
-    hideCurrentLocationOverlay();
-  });
-  currentLocationSetManualBtn?.addEventListener('click', () => {
-    const lat = parseFloat(manualLat.value);
-    const lon = parseFloat(manualLon.value);
-    const alt = manualAlt.value ? parseFloat(manualAlt.value) : undefined;
+  // Close button - support both click and touch
+  if (currentLocationCloseBtn) {
+    currentLocationCloseBtn.addEventListener('click', hideCurrentLocationOverlay);
+    currentLocationCloseBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      hideCurrentLocationOverlay();
+    }, { passive: false });
+  } else {
+    debug('WARN: current-location-close-btn not found');
+  }
 
-    if (isNaN(lat) || isNaN(lon)) {
-      alert('Please enter valid coordinates');
-      return;
-    }
+  // Use GPS button - just close overlay
+  if (currentLocationUseGpsBtn) {
+    currentLocationUseGpsBtn.addEventListener('click', () => {
+      debug('Use GPS button clicked');
+      hideCurrentLocationOverlay();
+    });
+    currentLocationUseGpsBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      debug('Use GPS button touched');
+      hideCurrentLocationOverlay();
+    }, { passive: false });
+  } else {
+    debug('WARN: current-location-use-gps-btn not found');
+  }
 
-    // Override user position with manual entry
-    userPosition = { lat, lon, alt };
-    gpsAccuracy = 0; // Manual has no accuracy
-    debug(`Manual location set: ${lat.toFixed(6)}, ${lon.toFixed(6)}${alt !== undefined ? `, ${alt}m` : ''}`);
-    updateStatus();
-    updateCurrentLocationDisplay();
-    hideCurrentLocationOverlay();
-  });
+  // Set Manual Location button
+  if (currentLocationSetManualBtn) {
+    currentLocationSetManualBtn.addEventListener('click', handleSetManualLocation);
+    currentLocationSetManualBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      handleSetManualLocation();
+    }, { passive: false });
+  } else {
+    debug('WARN: current-location-set-manual-btn not found');
+  }
+}
+
+function handleSetManualLocation() {
+  const lat = parseFloat(manualLat.value);
+  const lon = parseFloat(manualLon.value);
+  const alt = manualAlt.value ? parseFloat(manualAlt.value) : undefined;
+
+  if (isNaN(lat) || isNaN(lon)) {
+    alert('Please enter valid coordinates');
+    return;
+  }
+
+  // Override user position with manual entry
+  userPosition = { lat, lon, alt };
+  gpsAccuracy = 0; // Manual has no accuracy
+  debug(`Manual location set: ${lat.toFixed(6)}, ${lon.toFixed(6)}${alt !== undefined ? `, ${alt}m` : ''}`);
+  updateStatus();
+  updateCurrentLocationDisplay();
+  hideCurrentLocationOverlay();
 }
 
 // Generic Location Picker (reusable for track location, add location)
