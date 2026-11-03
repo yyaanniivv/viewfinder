@@ -61,8 +61,9 @@ export default defineConfig({
       name: 'serve-simple',
       configureServer(server) {
         server.middlewares.use('/simple', (req, res, next) => {
+          const reqUrl = req.url || '/';
           // Remove /simple prefix for file lookup
-          const filePath = req.url.replace(/^\/simple/, '') || '/index.html';
+          const filePath = reqUrl.replace(/^\/simple/, '') || '/index.html';
           const fullPath = path.join(__dirname, 'public/simple', filePath);
 
           // Security: prevent directory traversal
@@ -74,7 +75,7 @@ export default defineConfig({
           fs.readFile(fullPath, (err, data) => {
             if (err) {
               // Fallback to index.html for SPA-like behavior within /simple/
-              if (req.url.endsWith('/') || !req.url.includes('.')) {
+              if (reqUrl.endsWith('/') || !reqUrl.includes('.')) {
                 fs.readFile(path.join(__dirname, 'public/simple/index.html'), (err2, data2) => {
                   if (err2) return next();
                   res.setHeader('Content-Type', 'text/html');
@@ -85,7 +86,7 @@ export default defineConfig({
               }
             } else {
               const ext = path.extname(fullPath);
-              const mimeTypes = {
+              const mimeTypes: Record<string, string> = {
                 '.html': 'text/html',
                 '.js': 'application/javascript',
                 '.css': 'text/css',

@@ -59,6 +59,14 @@ const toggleDebugPane = document.getElementById('toggle-debug-pane');
 const toggleCompass = document.getElementById('toggle-compass');
 const settingsVersion = document.getElementById('settings-version');
 const versionBadge = document.getElementById('version-badge');
+// Camera settings
+const cameraEnabledCheckbox = document.getElementById('camera-enabled');
+const cameraDefaultOnCheckbox = document.getElementById('camera-default-on');
+
+// Compass dial interaction state
+let compassDialActive = false;
+let compassDialStartAngle = 0;
+let compassDialStartOffset = 0;
 
 // State
 let userPosition = null;
@@ -82,6 +90,59 @@ function debug(msg) {
     debugContent.appendChild(line);
     debugContent.scrollTop = debugContent.scrollHeight;
   }
+}
+
+// Compass dial interaction handlers
+function handleCompassDialStart(e) {
+  if (!compassCanvas || !compassCtx) return;
+  // Only allow dial adjustment when calibrated
+  if (headingOffset === 0 && compassAlpha === null) return;
+
+  e.preventDefault();
+  const rect = compassCanvas.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  compassDialStartAngle = Math.atan2(clientY - centerY, clientX - centerX);
+  compassDialStartOffset = headingOffset;
+  compassDialActive = true;
+
+  // Visual feedback
+  compassCanvas.style.cursor = 'grabbing';
+}
+
+function handleCompassDialMove(e) {
+  if (!compassDialActive || !compassCanvas) return;
+  e.preventDefault();
+
+  const rect = compassCanvas.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  const currentAngle = Math.atan2(clientY - centerY, clientX - centerX);
+  const angleDiff = currentAngle - compassDialStartAngle;
+  const degreesDiff = angleDiff * 180 / Math.PI;
+
+  headingOffset = compassDialStartOffset + degreesDiff;
+  // Normalize to 0-360
+  headingOffset = ((headingOffset % 360) + 360) % 360;
+
+  debug(`Compass dial: offset=${headingOffset.toFixed(1)}°`);
+}
+
+function handleCompassDialEnd(e) {
+  if (!compassDialActive) return;
+  compassDialActive = false;
+  if (compassCanvas) {
+    compassCanvas.style.cursor = 'grab';
+  }
+  debug(`Compass dial ended: offset=${headingOffset.toFixed(1)}°`);
 }
 
 // Initialize
@@ -184,6 +245,19 @@ async function init() {
   // Camera toggle
   cameraToggleBtn?.addEventListener('click', toggleCamera);
 
+  // Compass dial interaction (rotate to adjust heading offset)
+  if (compassCanvas) {
+    // Mouse events
+    compassCanvas.addEventListener('mousedown', handleCompassDialStart);
+    window.addEventListener('mousemove', handleCompassDialMove);
+    window.addEventListener('mouseup', handleCompassDialEnd);
+
+    // Touch events for mobile
+    compassCanvas.addEventListener('touchstart', handleCompassDialStart, { passive: false });
+    window.addEventListener('touchmove', handleCompassDialMove, { passive: false });
+    window.addEventListener('touchend', handleCompassDialEnd);
+  }
+
   // Panel minimize/maximize
   minimizeLocationsBtn?.addEventListener('click', () => {
     locationsPanel.dataset.state = 'minimized';
@@ -274,6 +348,18 @@ async function init() {
     localStorage.setItem('horizon:showCompass', e.target.checked);
   });
 
+  // Camera settings checkboxes
+  cameraEnabledCheckbox?.addEventListener('change', (e) => {
+    const enabled = e.target.checked;
+    localStorage.setItem('horizon:cameraEnabled', enabled);
+    if (!enabled && cameraEnabled) {
+      toggleCamera();
+    }
+  });
+  cameraDefaultOnCheckbox?.addEventListener('change', (e) => {
+    localStorage.setItem('horizon:cameraDefaultOn', e.target.checked);
+  });
+
   // Load saved visibility preferences
   const showLocations = localStorage.getItem('horizon:showLocations');
   if (showLocations !== null) {
@@ -292,6 +378,26 @@ async function init() {
     const show = showCompass === 'true';
     currentLocationBtn.style.display = show ? 'flex' : 'none';
     toggleCompass.checked = show;
+  }
+
+  // Load saved camera preferences
+  const cameraEnabledPref = localStorage.getItem('horizon:cameraEnabled');
+  if (cameraEnabledPref !== null) {
+    const enabled = cameraEnabledPref === 'true';
+    cameraEnabledCheckbox.checked = enabled;
+    if (!enabled && cameraEnabled) {
+      // Camera was enabled but user disabled it in settings
+      // toggleCamera will be called when they click the button
+    }
+  }
+  const cameraDefaultOnPref = localStorage.getItem('horizon:cameraDefaultOn');
+  if (cameraDefaultOnPref !== null) {
+    const defaultOn = cameraDefaultOnPref === 'true';
+    cameraDefaultOnCheckbox.checked = defaultOn;
+    if (defaultOn && !cameraEnabled) {
+      // Auto-start camera if default is on
+      toggleCamera();
+    }
   }
 
   // GPS Status click-to-copy: copies "lat,lon,alt" to clipboard
@@ -478,7 +584,7 @@ function updateCurrentLocationDisplay() {
     gpsAccEl.textContent = '—';
     gpsCompassEl.textContent = compassAlpha !== null
       ? `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`
-      : 'Waiting for compass...';
+      : '—';
     if (gpsBearingRow) gpsBearingRow.style.display = 'none';
     return;
   }
@@ -488,7 +594,7 @@ function updateCurrentLocationDisplay() {
   gpsAccEl.textContent = gpsAccuracy !== null ? `${Math.round(gpsAccuracy)}m` : '—';
   gpsCompassEl.textContent = compassAlpha !== null
     ? `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`
-    : 'Waiting for compass...';
+    : '—';
 
   // Bearing to tracked location
   if (trackedLocationId && compassAlpha !== null) {
