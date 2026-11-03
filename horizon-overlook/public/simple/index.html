@@ -37,6 +37,8 @@
 
     <div class="status-indicators">
       <div id="status-gps" class="warn">📍 GPS: —</div>
+      <div id="status-compass" class="warn">🧭 Relative</div>
+      <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
     </div>
 
     <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
@@ -81,6 +83,13 @@
           <div class="slider-container">
             <input type="range" id="compass-rate" min="50" max="2000" step="50" value="100">
             <span id="compass-rate-value">100ms</span>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label for="compass-zero-offset">Zero Offset (°)</label>
+          <div class="slider-container">
+            <input type="range" id="compass-zero-offset" min="0" max="360" step="1" value="0">
+            <span id="compass-zero-offset-value">0°</span>
           </div>
         </div>
         <div class="setting-row">

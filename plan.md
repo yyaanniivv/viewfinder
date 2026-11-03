@@ -51,6 +51,8 @@
 | Click-to-copy GPS coords | ✅ | Click GPS status to copy lat,lon,alt |
 | Compass invert toggle | ✅ | In Settings: "Invert Compass Direction" |
 | Compass update rate | ✅ | Configurable 50-2000ms slider |
+| Compass zero offset | ✅ | 0-360° slider (180° fixes N/S) |
+| Level detection | ✅ | Status bar shows Level/Tilted via beta/gamma |
 
 ### File Structure
 
@@ -73,13 +75,16 @@ public/simple/
 
 ## TODO — Next Features (In Priority Order)
 
-### 1. Compass Improvements (IN PROGRESS)
-- [ ] **Device orientation matrix** — Use `populateMatrix()` / `absolute` + `beta`/`gamma` to detect:
-  - Device level (pointing down) → show compass
-  - Device raised (pointing at horizon) → show level indicator
-  - Auto-switch between compass/level mode
-- [ ] **Compass calibration UI** — Visual figure-8 guide + auto-detect
+### 1. Compass Improvements (IN PROGRESS — NOT DONE)
 - [ ] **OrientationSensor API** — Migrate from deprecated DeviceOrientation to modern OrientationSensor API
+  - ✅ Hybrid implementation added (tries OrientationSensor, falls back to DeviceOrientation)
+  - ⚠️ **NEEDS TESTING**: Works on Chrome Android, falls back on iOS Safari
+  - ⚠️ **TODO**: Test on Android Chrome, Pixel, Samsung to verify absolute heading + level detection
+- [ ] **Device orientation matrix** — Use quaternion/rotation matrix for robust level detection
+  - Current: basic pitch/roll threshold (|pitch|<5°, |roll|<5°)
+  - Better: use rotation matrix for precise horizon vs level detection
+- [ ] **Compass calibration UI** — Visual figure-8 guide + auto-detect
+- [ ] **Auto-switch compass/level mode** — When phone points down → compass, raised → level bar
 
 ### 2. GPS Refresh Rate Setting
 - [ ] Slider/bar in settings: 200ms to 20s (default 1000ms)
@@ -90,7 +95,7 @@ public/simple/
 - [ ] Paste from clipboard into location picker / add location form
 - [ ] Format: "Name, Lat, Lon, Alt" or JSON for easy sharing
 
-### 4. Phone Level Indicator
+### 4. Phone Level Indicator (Visual)
 - [ ] Show pitch/roll from DeviceOrientation (beta/gamma)
 - [ ] Visual: horizontal line with side dashes `|---|`
 - [ ] Green when level (|pitch| < 2° and |roll| < 2°), amber when slightly off, red when crooked
@@ -110,6 +115,9 @@ public/simple/
 ## Done ✅ (Recent)
 
 - [x] Compass invert toggle & configurable update rate in Settings
+- [x] Compass zero offset (0-360°) — 180° fixes N/S upside down
+- [x] Level detection via beta/gamma → status bar shows Level/Tilted
+- [x] Hybrid OrientationSensor API (works on Chrome Android, falls back on iOS)
 - [x] Camera settings — default off + settings toggle
 - [x] Compass wheel/dial interaction (rotate to adjust heading offset)
 - [x] Bearing display bar — live compass heading in top bar
@@ -137,14 +145,15 @@ public/simple/
 | Battery drain | Throttle GPS (configurable), pause AR when backgrounded |
 | Android compass parity | Test on Pixel/Samsung; same DeviceOrientation API |
 | HTTPS required for device testing | Use simple-server.cjs with self-signed cert |
-| DeviceOrientation API deprecated | Migrate to OrientationSensor API |
+| DeviceOrientation API deprecated | Hybrid OrientationSensor API implemented |
 
 ---
 
 ## Testing Checklist
 
 - [ ] iPhone 13 mini (iOS 17+) — camera, GPS, compass all work
-- [ ] Android Chrome — camera, GPS, compass all work
+- [ ] **Android Chrome — camera, GPS, compass all work (OrientationSensor → absolute heading)**
+- [ ] **Pixel/Samsung — verify absolute heading + level detection works**
 - [ ] Desktop Chrome (simulated) — GPS mock, compass mock
 - [ ] Offline — app loads, markers render from localStorage
 - [ ] PWA install — adds to home screen, works offline

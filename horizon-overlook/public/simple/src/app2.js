@@ -65,6 +65,8 @@ const cameraDefaultOnCheckbox = document.getElementById('camera-default-on');
 const compassInvertCheckbox = document.getElementById('compass-invert');
 const compassRateSlider = document.getElementById('compass-rate');
 const compassRateValue = document.getElementById('compass-rate-value');
+const compassZeroOffsetSlider = document.getElementById('compass-zero-offset');
+const compassZeroOffsetValue = document.getElementById('compass-zero-offset-value');
 const compassAutoCalibrateCheckbox = document.getElementById('compass-auto-calibrate');
 
 // Compass dial interaction state
@@ -208,8 +210,15 @@ async function init() {
   // Camera will be started when user clicks camera toggle button
 
   // Start compass (module only, permission requested on user gesture)
-  compassModule = startCompass(handleCompassUpdate);
-  debug('Compass module initialized (permission on first user gesture)');
+  const compassRate = parseInt(compassRateSlider?.value || '100');
+  startCompass(handleCompassUpdate, { updateRate: compassRate })
+    .then(module => {
+      compassModule = module;
+      debug(`Compass module initialized (rate: ${compassRate}ms, permission on first user gesture)`);
+    })
+    .catch(err => {
+      debug('Compass init failed: ' + err.message);
+    });
 
   // Start GPS
   try {
@@ -398,6 +407,33 @@ async function init() {
     localStorage.setItem('horizon:cameraDefaultOn', e.target.checked);
   });
 
+  // Compass settings
+  compassInvertCheckbox?.addEventListener('change', (e) => {
+    compassDirection = e.target.checked ? -1 : 1;
+    localStorage.setItem('horizon:compassInvert', e.target.checked);
+    debug(`Compass direction: ${compassDirection === -1 ? 'inverted' : 'normal'}`);
+  });
+  compassRateSlider?.addEventListener('input', (e) => {
+    const rate = parseInt(e.target.value);
+    compassRateValue.textContent = `${rate}ms`;
+    localStorage.setItem('horizon:compassRate', rate);
+    if (compassModule && compassModule.setUpdateRate) {
+      compassModule.setUpdateRate(rate);
+    }
+    debug(`Compass update rate: ${rate}ms`);
+  });
+  compassZeroOffsetSlider?.addEventListener('input', (e) => {
+    const offset = parseInt(e.target.value);
+    compassZeroOffset = offset;
+    compassZeroOffsetValue.textContent = `${offset}°`;
+    localStorage.setItem('horizon:compassZeroOffset', offset);
+    debug(`Compass zero offset: ${offset}°`);
+  });
+  compassAutoCalibrateCheckbox?.addEventListener('change', (e) => {
+    localStorage.setItem('horizon:compassAutoCalibrate', e.target.checked);
+    debug(`Compass auto-calibrate: ${e.target.checked ? 'on' : 'off'}`);
+  });
+
   // Load saved visibility preferences
   const showLocations = localStorage.getItem('horizon:showLocations');
   if (showLocations !== null) {
@@ -436,6 +472,36 @@ async function init() {
       // Auto-start camera if default is on
       toggleCamera();
     }
+  }
+
+  // Load saved compass preferences
+  const compassInvertPref = localStorage.getItem('horizon:compassInvert');
+  if (compassInvertPref !== null) {
+    const invert = compassInvertPref === 'true';
+    compassDirection = invert ? -1 : 1;
+    compassInvertCheckbox.checked = invert;
+    debug(`Loaded compass invert: ${invert ? 'on' : 'off'}`);
+  }
+  const compassRatePref = localStorage.getItem('horizon:compassRate');
+  if (compassRatePref !== null) {
+    const rate = parseInt(compassRatePref);
+    compassRateSlider.value = rate;
+    compassRateValue.textContent = `${rate}ms`;
+    debug(`Loaded compass rate: ${rate}ms`);
+  }
+  const compassAutoCalibratePref = localStorage.getItem('horizon:compassAutoCalibrate');
+  if (compassAutoCalibratePref !== null) {
+    const autoCal = compassAutoCalibratePref === 'true';
+    compassAutoCalibrateCheckbox.checked = autoCal;
+    debug(`Loaded compass auto-calibrate: ${autoCal ? 'on' : 'off'}`);
+  }
+  const compassZeroOffsetPref = localStorage.getItem('horizon:compassZeroOffset');
+  if (compassZeroOffsetPref !== null) {
+    const offset = parseInt(compassZeroOffsetPref);
+    compassZeroOffset = offset;
+    compassZeroOffsetSlider.value = offset;
+    compassZeroOffsetValue.textContent = `${offset}°`;
+    debug(`Loaded compass zero offset: ${offset}°`);
   }
 
   // GPS Status click-to-copy: copies "lat,lon,alt" to clipboard
@@ -490,7 +556,7 @@ function animate() {
 }
 
 function handleCompassUpdate(data) {
-  debug(`handleCompassUpdate called: alpha=${data.alpha}, absolute=${data.absolute}, beta=${data.beta}, gamma=${data.gamma}`);
+  debug(`handleCompassUpdate called: alpha=${data.alpha}, absolute=${data.absolute}, beta=${data.beta}, gamma=${data.gamma}, isLevel=${data.isLevel}`);
 
   // Apply compass direction fix: some devices report alpha inverted
   let alpha = data.alpha;
@@ -503,7 +569,10 @@ function handleCompassUpdate(data) {
 
   compassAlpha = alpha;
   compassAbsolute = data.absolute;
-  debug(`Compass: raw=${data.alpha.toFixed(1)}°, fixed=${alpha.toFixed(1)}°, absolute=${data.absolute}, dir=${compassDirection}, offset=${compassZeroOffset}`);
+  // Store level state for UI
+  window.compassIsLevel = data.isLevel;
+
+  debug(`Compass: raw=${data.alpha.toFixed(1)}°, fixed=${alpha.toFixed(1)}°, absolute=${data.absolute}, isLevel=${data.isLevel}, dir=${compassDirection}, offset=${compassZeroOffset}`);
   updateStatus();
   updateBearingDisplay();
   // Update current location overlay if open
@@ -572,6 +641,31 @@ function updateStatus() {
       statusGPS.textContent = `📍 GPS: —`;
     }
     statusGPS.className = gpsAccuracy && gpsAccuracy < 50 ? 'good' : 'warn';
+  }
+
+  // Update compass status
+  const statusCompass = document.getElementById('status-compass');
+  if (statusCompass) {
+    if (compassAlpha !== null) {
+      statusCompass.textContent = `🧭 ${compassAbsolute ? 'Absolute' : 'Relative'}`;
+      statusCompass.className = compassAbsolute ? 'good' : 'warn';
+    } else {
+      statusCompass.textContent = `🧭 —`;
+      statusCompass.className = 'warn';
+    }
+  }
+
+  // Update level indicator
+  const statusLevel = document.getElementById('status-level');
+  if (statusLevel) {
+    const isLevel = window.compassIsLevel;
+    if (isLevel !== undefined) {
+      statusLevel.style.display = 'inline-block';
+      statusLevel.textContent = isLevel ? '⚖️ Level' : '⚖️ Tilted';
+      statusLevel.className = isLevel ? 'good' : 'warn';
+    } else {
+      statusLevel.style.display = 'none';
+    }
   }
 }
 
