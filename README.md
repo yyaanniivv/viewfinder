@@ -1,6 +1,6 @@
-# Horizon Overlook
+# Viewfinder
 
-A lightweight AR-style web app that shows GPS locations as horizon markers over your camera feed. Built with vanilla JavaScript — no frameworks, no build step, works on iOS Safari today.
+A lightweight digital toposcope (orientation plaque / viewfinder) web app that shows GPS locations as horizon markers over your camera feed. Built with vanilla JavaScript — no frameworks, no build step.
 
 ## Features
 
@@ -12,37 +12,54 @@ A lightweight AR-style web app that shows GPS locations as horizon markers over 
 - **PWA-ready** — installable, works offline
 - **Zero build step** — ES modules, open `index.html` via HTTPS
 
+## Browser Support
+
+| API | iOS Safari | Android Chrome | Desktop Chrome |
+|-----|------------|----------------|----------------|
+| getUserMedia | ✅ 11+ | ✅ 53+ | ✅ |
+| DeviceOrientation | ✅ 13+ (permission) | ✅ 3+ | ❌ No native compass |
+| Geolocation | ✅ 5+ | ✅ 5+ | ✅ (mock) |
+| Canvas 2D | ✅ Always | ✅ Always | ✅ |
+| **Full Functionality** | ❌ **No** | ✅ **Yes** | ⚠️ Partial |
+
+**⚠️ Important:** iOS Safari does **not** provide reliable DeviceOrientation absolute heading (true north) — it only gives relative heading. This makes compass calibration unreliable on iOS. **Android Chrome is the recommended platform** for full functionality. Desktop Chrome works for UI testing but lacks real compass data.
+
 ## Quick Start
 
 ```bash
 # Serve via HTTPS (required for camera/gps)
-npx serve -s horizon-overlook/public/simple -l 8080 --ssl-cert cert.pem --ssl-key key.pem
 
-# Or use any HTTPS server (ngrok, python with certs, etc.)
-# Open on iPhone Safari: https://<your-ip>:8080
+# Option 1: Python (bind to 0.0.0.0 for network access)
+python3 -m http.server 5174 --bind 0.0.0.0 --directory viewfinder
+
+# Option 2: npx serve (HTTP)
+npx serve viewfinder -l 5174
+
+# Option 3: npx serve with self-signed cert (HTTPS for mobile testing)
+# Generate cert first (one-time):
+# openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"
+npx serve viewfinder -l 5174 --ssl-cert cert.pem --ssl-key key.pem
+
+# Option 4: ngrok for HTTPS (exposes local server to internet)
+ngrok http 5174
+# Use the https://xxx.ngrok.io URL on your Android phone
 ```
 
 ## Project Structure
 
 ```
-horizon-overlook/
-├── public/simple/           # ← Main app (this is what runs)
-│   ├── index.html           # Single HTML entry point
-│   ├── style.css            # All styling
-│   └── src/
-│       ├── app2.js          # Main coordinator
-│       ├── geo.js           # Haversine, bearing, projection
-│       ├── calibration.js   # Compass offset + localStorage
-│       ├── storage.js       # Location CRUD + localStorage
-│       ├── camera.js        # getUserMedia setup
-│       ├── compass.js       # DeviceOrientation + iOS permission
-│       ├── gps.js           # watchPosition
-│       └── overlay.js       # Canvas drawing loop
-├── src/core/                # Shared TypeScript core (for React Native port)
-│   ├── geo.ts
-│   ├── calibration.ts
-│   └── storage.ts
-└── horizon-overlook-native/ # (Future) Expo + React Native + ARKit
+viewfinder/
+├── index.html           # Single HTML entry point
+├── style.css            # All styling
+└── src/
+    ├── app.js           # Main coordinator
+    ├── geo.js           # Haversine, bearing, projection
+    ├── calibration.js   # Compass offset + localStorage
+    ├── storage.js       # Location CRUD + localStorage
+    ├── camera.js        # getUserMedia setup
+    ├── compass.js       # DeviceOrientation + iOS permission
+    ├── gps.js           # watchPosition
+    └── overlay.js       # Canvas drawing loop
 ```
 
 ## How It Works
@@ -53,19 +70,12 @@ horizon-overlook/
 4. **Projection** maps bearing to canvas X: `centerX + (bearing - heading) * pxPerDeg`
 5. **Canvas** draws markers on horizon line at computed positions
 
-## Screenshots
-
-| Camera + Overlay | Location Panel | Calibration |
-|------------------|----------------|-------------|
-| Markers on horizon | Add/edit locations | Align to landmark |
-
 ## Requirements
 
-- iOS 13+ Safari / Android Chrome
-- HTTPS (required for camera, GPS, motion APIs)
-- Camera permission
-- Location permission  
-- Motion permission (iOS 13+ for compass)
+- **Android Chrome** (recommended) — full compass + GPS + camera support
+- **Desktop Chrome** — UI testing only (mock GPS, no compass)
+- HTTPS required for camera/GPS/motion on mobile (use self-signed cert or ngrok)
+- Camera, Location, Motion & Orientation permissions
 
 ## Version
 

@@ -1,9 +1,9 @@
 /**
- * Location storage for Horizon Overlook Simple
+ * Location storage for Viewfinder
  * localStorage CRUD with type safety
  */
 
-const LOCATIONS_KEY = 'horizon-overlook:locations';
+const LOCATIONS_KEY = 'viewfinder:locations';
 
 const LOCATION_COLORS = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFBE0B', '#FB5607',

@@ -1,11 +1,11 @@
 /**
- * Calibration logic for Horizon Overlook Simple
+ * Calibration logic for Viewfinder
  * Handles compass offset computation and persistence
  */
 
 import { bearing, normalizeBearing } from './geo.js';
 
-const CALIBRATION_KEY = 'horizon-overlook:calibration';
+const CALIBRATION_KEY = 'viewfinder:calibration';
 
 export function computeHeadingOffset(compassAlpha, userPosition, landmarkPosition) {
   const trueBearing = bearing(userPosition, landmarkPosition);

@@ -1,9 +1,9 @@
 /**
- * Canvas overlay drawing for Horizon Overlook Simple
+ * Canvas overlay drawing for Viewfinder
  * Draws horizon line, compass ticks, and location markers
  */
 
-import { normalizeBearing, formatDistance } from './geo.js';
+import { normalizeBearing, formatDistance, haversineDistance, bearing } from './geo.js';
 
 const FOV_DEG = 90; // Horizontal field of view assumption
 const HORIZON_Y_RATIO = 0.5; // Horizon at vertical center
@@ -114,7 +114,7 @@ export class Overlay {
     const { ctx } = this;
 
     this.locations.forEach(loc => {
-      const { bearing: trueBearing, distance } = this.calcBearingDistance(this.userPosition, loc);
+      const { bearing: trueBearing, distance } = bearing(this.userPosition, loc);
       const calibratedBearing = normalizeBearing(trueBearing - this.headingOffset);
       const relBearing = normalizeBearing(calibratedBearing - this.compassHeading);
 
@@ -229,22 +229,6 @@ export class Overlay {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText('UNCALIBRATED - Tap compass to calibrate', w/2, 20);
-  }
-
-  calcBearingDistance(from, to) {
-    const lat1 = from.lat * Math.PI / 180;
-    const lat2 = to.lat * Math.PI / 180;
-    const dLon = (to.lon - from.lon) * Math.PI / 180;
-
-    const y = Math.sin(dLon) * Math.cos(lat2);
-    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-    const bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-
-    const dLat = (to.lat - from.lat) * Math.PI / 180;
-    const a = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
-    const distance = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-    return { bearing, distance };
   }
 
   roundRect(ctx, x, y, w, h, r) {

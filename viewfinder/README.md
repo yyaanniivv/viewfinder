@@ -1,4 +1,4 @@
-# Horizon Overlook — Digital Toposcope / Orientation Plaque
+# Viewfinder — Digital Toposcope / Orientation Plaque
 
 > A web-based **digital toposcope** (orientation plaque / viewfinder) that shows points of interest on the horizon through your phone's camera.
 
@@ -6,7 +6,7 @@
 
 A **toposcope** (also called an **orientation plaque**, **orientation table**, or **viewfinder**) is a physical plaque found at viewpoints showing the direction and distance to visible landmarks. Think of the bronze plaques on mountain summits or observation decks that say "Mount X — 23 km →".
 
-**Horizon Overlook digitizes this:** instead of a fixed metal plaque, you get a live camera view with dynamic markers that move as you pan your phone — showing exactly where each landmark is on the horizon, with real-time distance and bearing.
+**Viewfinder digitizes this:** instead of a fixed metal plaque, you get a live camera view with dynamic markers that move as you pan your phone — showing exactly where each landmark is on the horizon, with real-time distance and bearing.
 
 ## Features
 
@@ -17,7 +17,19 @@ A **toposcope** (also called an **orientation plaque**, **orientation table**, o
 - 📍 **Location management** — Add/edit/delete points of interest (localStorage)
 - ⚙️ **Calibration** — Tap compass → point at known landmark → auto-calibrate
 - 📱 **PWA-ready** — Install to home screen, works offline
-- 🌐 **Web-based** — No app store, runs in Safari/Chrome
+- 🌐 **Web-based** — No app store, runs in Chrome (desktop & Android)
+
+## Browser Support
+
+| API | iOS Safari | Android Chrome | Desktop Chrome |
+|-----|------------|----------------|----------------|
+| getUserMedia | ✅ 11+ | ✅ 53+ | ✅ |
+| DeviceOrientation | ✅ 13+ (permission) | ✅ 3+ | ❌ No native compass |
+| Geolocation | ✅ 5+ | ✅ 5+ | ✅ (mock) |
+| Canvas 2D | ✅ Always | ✅ Always | ✅ |
+| **Full Functionality** | ❌ **No** | ✅ **Yes** | ⚠️ Partial |
+
+**⚠️ Important:** iOS Safari does **not** provide reliable DeviceOrientation absolute heading (true north) — it only gives relative heading. This makes compass calibration unreliable on iOS. **Android Chrome is the recommended platform** for full functionality. Desktop Chrome works for UI testing but lacks real compass data.
 
 ## Use Cases
 
@@ -31,22 +43,26 @@ A **toposcope** (also called an **orientation plaque**, **orientation table**, o
 
 ```bash
 # Serve locally (HTTPS required for camera on mobile)
-cd horizon-overlook-simple
 
-# Option 1: Python
-python3 -m http.server 5174
+# Option 1: Python (bind to 0.0.0.0 for network access)
+python3 -m http.server 5174 --bind 0.0.0.0 --directory viewfinder
 
-# Option 2: npx serve
-npx serve -l 5174
+# Option 2: npx serve (HTTP)
+npx serve viewfinder -l 5174
 
-# Option 3: ngrok for HTTPS (required on mobile Safari)
+# Option 3: npx serve with self-signed cert (HTTPS for mobile testing)
+# Generate cert first (one-time):
+# openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"
+npx serve viewfinder -l 5174 --ssl-cert cert.pem --ssl-key key.pem
+
+# Option 4: ngrok for HTTPS (exposes local server to internet)
 ngrok http 5174
-# Use the https://xxx.ngrok.io URL on your phone
+# Use the https://xxx.ngrok.io URL on your Android phone
 ```
 
-## On Mobile (iOS Safari / Android Chrome)
+## On Mobile (Android Chrome Only — iOS Not Supported)
 
-1. Open the HTTPS URL
+1. Open the HTTPS URL (ngrok) on **Android Chrome**
 2. Allow permissions: **Camera**, **Location**, **Motion & Orientation**
 3. Tap the **compass button** (top-left) to calibrate
 4. Select a visible landmark, point phone at it, tap **Calibrate**
@@ -70,14 +86,14 @@ Add your own via the **Locations panel** (bottom drawer).
 index.html          # Camera <video> + Canvas <canvas> + UI
 style.css           # All styling (dark theme, mobile-first)
 src/
+├── app.js          # Main coordinator
 ├── geo.js          # Haversine distance, bearing math
 ├── calibration.js  # Compass offset computation + localStorage
 ├── storage.js      # Location CRUD (localStorage)
 ├── camera.js       # getUserMedia setup
 ├── compass.js      # DeviceOrientation + iOS permission
 ├── gps.js          # navigator.geolocation.watchPosition
-├── overlay.js      # Canvas 2D drawing (horizon, ticks, markers)
-└── app.js          # Main coordinator
+└── overlay.js      # Canvas 2D drawing (horizon, ticks, markers)
 ```
 
 ## Math
@@ -102,16 +118,12 @@ calibratedHeading = normalize(compassAlpha - offset)
 
 Persisted to `localStorage` (survives reload).
 
-## Browser Support
+## Requirements
 
-| API | iOS Safari | Android Chrome |
-|-----|------------|----------------|
-| getUserMedia | ✅ 11+ | ✅ 53+ |
-| DeviceOrientation | ✅ 13+ (permission) | ✅ 3+ |
-| Geolocation | ✅ 5+ | ✅ 5+ |
-| Canvas 2D | ✅ Always | ✅ Always |
-
-**HTTPS required** for camera on mobile. Use ngrok or mkcert for local testing.
+- **Android Chrome** (recommended) — full compass + GPS + camera support
+- **Desktop Chrome** — UI testing only (mock GPS, no compass)
+- HTTPS required for camera/GPS/motion on mobile (use self-signed cert or ngrok)
+- Camera, Location, Motion & Orientation permissions
 
 ## Future Ideas
 

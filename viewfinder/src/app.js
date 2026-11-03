@@ -1,5 +1,5 @@
 /**
- * Main app coordinator for Horizon Overlook Simple
+ * Main app coordinator for Viewfinder
  * Wires camera, compass, GPS, overlay, calibration, and locations
  */
 
@@ -9,7 +9,7 @@ import { startCompass } from './compass.js';
 import { startGPS } from './gps.js';
 import { getLocations, saveLocations, SAMPLE_LOCATIONS, createLocation, generateId, getNextColor, LOCATION_COLORS } from './storage.js';
 import { loadCalibration, saveCalibration, computeHeadingOffset, hasValidCalibration } from './calibration.js';
-import { normalizeBearing, formatDistance } from './geo.js';
+import { normalizeBearing, formatDistance, haversineDistance } from './geo.js';
 
 // DOM Elements
 const video = document.getElementById('camera');
@@ -328,15 +328,6 @@ function showLocationToast(loc) {
   `;
 
   toast.querySelector('.toast-close').onclick = () => toast.remove();
-}
-
-function haversineDistance(from, to) {
-  const lat1 = from.lat * Math.PI / 180;
-  const lat2 = to.lat * Math.PI / 180;
-  const dLat = (to.lat - from.lat) * Math.PI / 180;
-  const dLon = (to.lon - from.lon) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
-  return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 function showLocationForm() {

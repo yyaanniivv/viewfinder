@@ -1,5 +1,5 @@
 /**
- * GPS tracking for Horizon Overlook Simple
+ * GPS tracking for Viewfinder
  * Uses navigator.geolocation.watchPosition
  */
 

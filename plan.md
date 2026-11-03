@@ -1,37 +1,16 @@
-# Horizon Overlook — Unified Plan
+# Viewfinder — Unified Plan
 
 ## Project Status
 
-**Current**: React Web App + Simple Web App (both work on iOS Safari) ✅
+**Current**: Viewfinder — Simple Canvas 2D Web App (works on Android Chrome) ✅
 
-**Archived**: WebXR + Three.js prototype (iOS Safari: no WebXR support) 📦
+**Archived**: React Web App + WebXR + Three.js prototype (iOS Safari: no WebXR support) 📦
 
 **Future**: React Native/Expo + ARKit (native iOS, same core logic)
 
 ---
 
-## React Web App (Production Ready)
-
-### What Works
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Camera feed (`getUserMedia`) | ✅ | Environment-facing, playsinline |
-| Canvas overlay (2D drawing) | ✅ | Horizon line, compass ticks, markers |
-| GPS position (`watchPosition`) | ✅ | High accuracy, altitude, accuracy |
-| Compass heading (`DeviceOrientation`) | ✅ | iOS permission handled |
-| Bearing math (haversine) | ✅ | Core geo.ts — pure, tested |
-| Location CRUD + localStorage | ✅ | 5 Tel Aviv samples included |
-| Calibration (offset) | ✅ | Tap compass → select landmark → calibrate |
-| PWA (offline, installable) | ✅ | Service worker + manifest |
-| Settings panel | ✅ | Pane visibility, version badge |
-| Calibration result display | ✅ | Offset, user lat/lon, timestamp, landmark, true bearing |
-| Interactive CompassRing | ✅ | Tap to calibrate when uncalibrated |
-| Auto-minimize location panel | ✅ | Collapses on location selection |
-
----
-
-## Simple Web App (Production Ready)
+## Viewfinder (Production Ready)
 
 ### What Works
 
@@ -57,17 +36,17 @@
 ### File Structure
 
 ```
-public/simple/
+viewfinder/
 ├── index.html          # Single page, loads ES modules
 ├── style.css           # All styling (~900 lines)
 └── src/
-    ├── app2.js         # Main coordinator
+    ├── app.js          # Main coordinator
     ├── geo.js          # Math: bearing, distance, projection
     ├── calibration.js  # Offset calc + localStorage
     ├── storage.js      # Location CRUD + localStorage
     ├── camera.js       # getUserMedia + video element
     ├── compass.js      # DeviceOrientation + iOS permission
-    ├── gps.js          | watchPosition wrapper
+    ├── gps.js          # watchPosition wrapper
     └── overlay.js      # Canvas drawing loop (requestAnimationFrame)
 ```
 

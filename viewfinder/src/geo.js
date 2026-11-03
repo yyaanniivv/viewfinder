@@ -1,5 +1,5 @@
 /**
- * Core geospatial math for Horizon Overlook Simple
+ * Core geospatial math for Viewfinder
  * Pure JavaScript ES module, no dependencies
  */
 

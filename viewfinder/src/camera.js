@@ -1,5 +1,5 @@
 /**
- * Camera handling for Horizon Overlook Simple
+ * Camera handling for Viewfinder
  * Uses getUserMedia for camera access
  */
 
