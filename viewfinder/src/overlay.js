@@ -26,6 +26,9 @@ export class Overlay {
     // Lane markers experiment: fan locations out above/below the horizon
     // instead of stacking all labels below it
     this.laneMode = options.laneMode || false;
+    // Clean wheel: hide pointer triangles on the horizon — lane labels
+    // become the markers themselves
+    this.cleanWheel = options.cleanWheel || false;
     this.pitch = null;   // front-to-back tilt (beta), degrees
     this.roll = null;    // left-to-right tilt (gamma), degrees
     this.horizonY = null;
@@ -34,6 +37,14 @@ export class Overlay {
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
+  }
+
+  /**
+   * Locations shown on the overlay — respects the `hidden` flag
+   * toggled from the locations panel.
+   */
+  visibleLocations() {
+    return this.locations.filter(l => !l.hidden);
   }
 
   resize() {
@@ -57,6 +68,8 @@ export class Overlay {
     if (data.roll !== undefined) this.roll = data.roll;
     if (data.showLevel !== undefined) this.showLevel = data.showLevel;
     if (data.laneMode !== undefined) this.laneMode = data.laneMode;
+    if (data.cleanWheel !== undefined) this.cleanWheel = data.cleanWheel;
+    if (data.edgeArrowMargin !== undefined) this.edgeArrowMargin = data.edgeArrowMargin;
   }
 
   draw() {
@@ -232,7 +245,7 @@ export class Overlay {
     // First pass: compute screen positions of visible markers so we can
     // stagger labels that would overlap
     const visible = [];
-    this.locations.forEach(loc => {
+    this.visibleLocations().forEach(loc => {
       const trueBearing = bearing(this.userPosition, loc);
       const distance = haversineDistance(this.userPosition, loc);
       const calibratedBearing = normalizeBearing(trueBearing - this.headingOffset);
@@ -299,7 +312,7 @@ export class Overlay {
 
     const { ctx } = this;
     const visible = [];
-    this.locations.forEach(loc => {
+    this.visibleLocations().forEach(loc => {
       const trueBearing = bearing(this.userPosition, loc);
       const distance = haversineDistance(this.userPosition, loc);
       const calibratedBearing = normalizeBearing(trueBearing - this.headingOffset);
@@ -347,38 +360,45 @@ export class Overlay {
         : this.horizonY + FIRST_LANE + row * LANE_GAP;
     }
 
-    // Draw each: pointer at the horizon + floating label in its lane
+    // Draw each: pointer at the horizon (skipped in clean-wheel mode — the
+    // lane label is the marker) + floating label in its lane
     for (const m of sorted) {
-      // Pointer triangle on the horizon (the "wheel" itself stays clean)
       const TRI_H = 10;
       const TRI_W = 12;
-      ctx.beginPath();
-      ctx.moveTo(m.screenX, this.horizonY + TRI_H);
-      ctx.lineTo(m.screenX - TRI_W / 2, this.horizonY);
-      ctx.lineTo(m.screenX + TRI_W / 2, this.horizonY);
-      ctx.closePath();
-      ctx.fillStyle = m.loc.color;
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      const pointerOnLine = !this.cleanWheel;
+
+      if (pointerOnLine) {
+        // Pointer triangle on the horizon (the "wheel" itself stays clean)
+        ctx.beginPath();
+        ctx.moveTo(m.screenX, this.horizonY + TRI_H);
+        ctx.lineTo(m.screenX - TRI_W / 2, this.horizonY);
+        ctx.lineTo(m.screenX + TRI_W / 2, this.horizonY);
+        ctx.closePath();
+        ctx.fillStyle = m.loc.color;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
 
       // Label box centered in its lane, clamped to the viewport
-      const boxH = 20;
+      const boxH = 22;
       let boxX = m.screenX - m.boxW / 2;
       boxX = Math.max(8, Math.min(boxX, w - m.boxW - 8));
       const boxY = m.laneY - boxH / 2;
 
-      // Subtle connector: hairline from pointer to lane (kept faint so it
-      // doesn't recreate the clutter — easy to drop entirely)
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([2, 4]);
-      ctx.beginPath();
-      ctx.moveTo(m.screenX, m.laneY > this.horizonY ? this.horizonY + TRI_H : this.horizonY - TRI_H);
-      ctx.lineTo(m.screenX, m.laneY + (m.laneY > this.horizonY ? -boxH / 2 : boxH / 2));
-      ctx.stroke();
-      ctx.setLineDash([]);
+      if (pointerOnLine) {
+        // Subtle connector: hairline from pointer to lane (kept faint so it
+        // doesn't recreate the clutter — easy to drop entirely)
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 4]);
+        ctx.beginPath();
+        ctx.moveTo(m.screenX, m.laneY > this.horizonY ? this.horizonY + TRI_H : this.horizonY - TRI_H);
+        ctx.lineTo(m.screenX, m.laneY + (m.laneY > this.horizonY ? -boxH / 2 : boxH / 2));
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
       this.roundRect(ctx, boxX, boxY, m.boxW, boxH, 6);

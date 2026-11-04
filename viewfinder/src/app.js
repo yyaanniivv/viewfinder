@@ -66,6 +66,10 @@ const levelIndicatorToggle = document.getElementById('toggle-level-indicator');
 const levelIndicatorCanvas = document.getElementById('level-indicator');
 // Lane markers experiment (labels fan out above/below horizon)
 const laneModeToggle = document.getElementById('toggle-lane-mode');
+// Clean center wheel (no location triangles on the horizon in lane mode)
+const cleanWheelToggle = document.getElementById('toggle-clean-wheel');
+// Divider picker (drag locations across a visible/hidden divider line)
+const pickerDividerToggle = document.getElementById('toggle-picker-divider');
 // GPS settings
 const gpsRateSlider = document.getElementById('gps-rate');
 const gpsRateValue = document.getElementById('gps-rate-value');
@@ -105,6 +109,10 @@ let levelRoll = null;     // left-to-right tilt (gamma)
 let levelIndicatorEnabled = false; // Default OFF
 // Lane markers experiment
 let laneModeEnabled = false; // Default OFF
+// Clean center wheel (only affects lane mode)
+let cleanWheelEnabled = true; // Default ON
+// Divider picker style for the locations panel
+let pickerDividerEnabled = false; // Default OFF (tap the eye button instead)
 
 // Debug function (module scope so callbacks can use it)
 function debug(msg) {
@@ -511,6 +519,21 @@ async function init() {
     debug(`Lane markers: ${laneModeEnabled ? 'on' : 'off'}`);
   });
 
+  // Clean center wheel toggle (lane mode only)
+  cleanWheelToggle?.addEventListener('change', (e) => {
+    cleanWheelEnabled = e.target.checked;
+    localStorage.setItem('viewfinder:cleanWheel', cleanWheelEnabled);
+    debug(`Clean wheel: ${cleanWheelEnabled ? 'on' : 'off'}`);
+  });
+
+  // Divider picker style toggle (locations panel)
+  pickerDividerToggle?.addEventListener('change', (e) => {
+    pickerDividerEnabled = e.target.checked;
+    localStorage.setItem('viewfinder:pickerDivider', pickerDividerEnabled);
+    renderLocationList();
+    debug(`Divider picker: ${pickerDividerEnabled ? 'on' : 'off'}`);
+  });
+
   // GPS rate slider
   gpsRateSlider?.addEventListener('input', (e) => {
     const rateMs = parseInt(e.target.value);
@@ -645,6 +668,28 @@ async function init() {
     laneModeToggle.checked = false;
   }
 
+  // Load clean wheel preference (default on)
+  const cleanWheelPref = localStorage.getItem('viewfinder:cleanWheel');
+  if (cleanWheelPref !== null) {
+    cleanWheelEnabled = cleanWheelPref === 'true';
+    cleanWheelToggle.checked = cleanWheelEnabled;
+    debug(`Loaded clean wheel: ${cleanWheelEnabled ? 'on' : 'off'}`);
+  } else {
+    cleanWheelEnabled = true;
+    cleanWheelToggle.checked = true;
+  }
+
+  // Load divider picker preference (default off)
+  const pickerDividerPref = localStorage.getItem('viewfinder:pickerDivider');
+  if (pickerDividerPref !== null) {
+    pickerDividerEnabled = pickerDividerPref === 'true';
+    pickerDividerToggle.checked = pickerDividerEnabled;
+    debug(`Loaded divider picker: ${pickerDividerEnabled ? 'on' : 'off'}`);
+  } else {
+    pickerDividerEnabled = false;
+    pickerDividerToggle.checked = false;
+  }
+
   // Load GPS rate preference (default 10s)
   const gpsRatePref = localStorage.getItem('viewfinder:gpsRate');
   if (gpsRatePref !== null) {
@@ -703,6 +748,7 @@ function animate() {
       roll: levelRoll,
       showLevel: levelIndicatorEnabled,
       laneMode: laneModeEnabled,
+      cleanWheel: cleanWheelEnabled,
     });
     overlay.draw();
   }
@@ -1138,8 +1184,23 @@ function renderLocationList() {
     return;
   }
 
-  list.innerHTML = locations.map(loc => `
-    <div class="location-item" data-id="${loc.id}">
+  if (pickerDividerEnabled) {
+    renderDividerList(list);
+  } else {
+    renderEyeList(list);
+  }
+}
+
+/**
+ * Picker mode A: every item has an eye toggle. Hidden items render dimmed
+ * in place, under a "Hidden" subheader. Simple, no reordering needed.
+ */
+function renderEyeList(list) {
+  const shown = locations.filter(l => !l.hidden);
+  const hidden = locations.filter(l => l.hidden);
+
+  const itemHTML = (loc, isHidden) => `
+    <div class="location-item ${isHidden ? 'location-hidden' : ''}" data-id="${loc.id}">
       <div class="location-info">
         <span class="location-color" style="background: ${loc.color}"></span>
         <div class="location-details">
@@ -1152,13 +1213,75 @@ function renderLocationList() {
         </div>
       </div>
       <div class="location-actions">
+        <button class="icon-btn visibility-btn" data-id="${loc.id}" aria-label="${isHidden ? 'Show on overlay' : 'Hide from overlay'}">${isHidden ? '🚫' : '👁️'}</button>
         <button class="icon-btn edit-btn" data-id="${loc.id}">✏️</button>
         <button class="icon-btn delete-btn" data-id="${loc.id}">🗑️</button>
       </div>
     </div>
-  `).join('');
+  `;
 
-  // Event delegation
+  let html = '';
+  if (hidden.length > 0) {
+    html += `<div class="picker-section-label">Visible (${shown.length})</div>`;
+    html += shown.map(l => itemHTML(l, false)).join('');
+    html += `<div class="picker-section-label">Hidden (${hidden.length})</div>`;
+    html += hidden.map(l => itemHTML(l, true)).join('');
+  } else {
+    html += shown.map(l => itemHTML(l, false)).join('');
+  }
+  list.innerHTML = html;
+
+  attachLocationListEvents(list);
+}
+
+/**
+ * Picker mode B: drag items across a horizontal divider line. Items above
+ * the line are visible on the overlay, below are hidden. On touch: drag;
+ * also a tap toggles placement as a fallback.
+ */
+function renderDividerList(list) {
+  const above = locations.filter(l => !l.hidden);
+  const below = locations.filter(l => l.hidden);
+
+  const itemHTML = (loc, isHidden) => `
+    <div class="location-item draggable ${isHidden ? 'location-hidden' : ''}"
+         data-id="${loc.id}" draggable="true">
+      <span class="drag-handle">⠿</span>
+      <div class="location-info">
+        <span class="location-color" style="background: ${loc.color}"></span>
+        <div class="location-details">
+          <span class="location-name">${loc.name}</span>
+          <span class="location-meta">
+            ${loc.type ? `<span class="type-emoji">${getTypeEmoji(loc.type)}</span>` : ''}
+            ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}
+          </span>
+        </div>
+      </div>
+      <div class="location-actions">
+        <button class="icon-btn edit-btn" data-id="${loc.id}">✏️</button>
+        <button class="icon-btn delete-btn" data-id="${loc.id}">🗑️</button>
+      </div>
+    </div>
+  `;
+
+  let html = '<div class="picker-section-label">Visible</div>';
+  html += above.length ? above.map(l => itemHTML(l, false)).join('') : '<p class="empty picker-drop-hint">Drag locations above this line to show them</p>';
+  html += '<div id="picker-divider" class="picker-divider"><span class="picker-divider-label">— hide below —</span></div>';
+  html += '<div class="picker-below-zone">';
+  html += below.length ? below.map(l => itemHTML(l, true)).join('') : '<p class="empty picker-drop-hint">Drop here to hide</p>';
+  html += '</div>';
+  list.innerHTML = html;
+
+  attachDividerEvents(list);
+}
+
+function attachLocationListEvents(list) {
+  list.querySelectorAll('.visibility-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleLocationHidden(e.currentTarget.dataset.id);
+    });
+  });
   list.querySelectorAll('.edit-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1178,6 +1301,82 @@ function renderLocationList() {
       selectLocation(id);
     });
   });
+}
+
+function attachDividerEvents(list) {
+  attachLocationListEvents(list); // edit/delete/select still work
+
+  const divider = list.querySelector('#picker-divider');
+
+  // HTML5 drag & drop (desktop)
+  list.querySelectorAll('.location-item.draggable').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', item.dataset.id);
+      item.classList.add('dragging');
+    });
+    item.addEventListener('dragend', () => item.classList.remove('dragging'));
+  });
+
+  if (divider) {
+    divider.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      divider.classList.add('drop-target');
+    });
+    divider.addEventListener('dragleave', () => divider.classList.remove('drop-target'));
+    divider.addEventListener('drop', (e) => {
+      e.preventDefault();
+      divider.classList.remove('drop-target');
+      const id = e.dataTransfer.getData('text/plain');
+      if (id) setHidden(id, true);
+    });
+
+    // Dropping anywhere in the list above the divider shows the location
+    list.addEventListener('dragover', (e) => e.preventDefault());
+    list.addEventListener('drop', (e) => {
+      const id = e.dataTransfer.getData('text/plain');
+      if (!id) return;
+      e.preventDefault();
+      // If the drop was on the divider itself, it's handled there
+      if (e.target === divider || divider.contains(e.target)) return;
+      const rect = divider.getBoundingClientRect();
+      const droppedBelow = e.clientY > rect.top;
+      setHidden(id, droppedBelow);
+    });
+  }
+
+  // Touch fallback: long-press an item to toggle its side (HTML5 DnD
+  // doesn't fire on mobile)
+  let pressTimer = null;
+  list.querySelectorAll('.location-item.draggable').forEach(item => {
+    item.addEventListener('touchstart', () => {
+      pressTimer = setTimeout(() => {
+        const id = item.dataset.id;
+        const loc = locations.find(l => l.id === id);
+        if (loc) {
+          setHidden(id, !loc.hidden);
+          if (navigator.vibrate) navigator.vibrate(30);
+        }
+      }, 600);
+    }, { passive: true });
+    ['touchend', 'touchmove', 'touchcancel'].forEach(ev =>
+      item.addEventListener(ev, () => clearTimeout(pressTimer), { passive: true })
+    );
+  });
+}
+
+function toggleLocationHidden(id) {
+  const loc = locations.find(l => l.id === id);
+  if (!loc) return;
+  setHidden(id, !loc.hidden);
+}
+
+function setHidden(id, isHidden) {
+  const loc = locations.find(l => l.id === id);
+  if (!loc || loc.hidden === isHidden) return;
+  loc.hidden = isHidden;
+  saveLocations(locations);
+  renderLocationList();
+  debug(`${loc.name} ${isHidden ? 'hidden from' : 'shown on'} overlay`);
 }
 
 function editLocation(id) {
