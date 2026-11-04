@@ -511,6 +511,17 @@ async function init() {
     debug(`GPS update rate: ${rateMs / 1000}s`);
   });
 
+  // Clear storage button
+  const clearStorageBtn = document.getElementById('clear-storage-btn');
+  clearStorageBtn?.addEventListener('click', () => {
+    if (confirm('Clear all stored data? This will reset locations, settings, and calibration.')) {
+      localStorage.clear();
+      debug('All localStorage cleared');
+      // Reload page to apply defaults
+      location.reload();
+    }
+  });
+
   // Load saved visibility preferences
   const showLocations = localStorage.getItem('viewfinder:showLocations');
   if (showLocations !== null) {

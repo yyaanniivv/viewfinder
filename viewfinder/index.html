@@ -52,6 +52,28 @@
       </div>
 
       <div class="settings-section">
+        <h3>Panel Visibility</h3>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-locations-panel">
+            <span>Locations Panel</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-debug-pane">
+            <span>Debug Pane</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-compass" checked>
+            <span>Compass Ring</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
         <h3>Camera</h3>
         <div class="setting-row">
           <label>
@@ -115,32 +137,17 @@
       </div>
 
       <div class="settings-section">
-        <h3>Panel Visibility</h3>
-        <div class="setting-row">
-          <label>
-            <input type="checkbox" id="toggle-locations-panel" checked>
-            <span>Locations Panel</span>
-          </label>
-        </div>
-        <div class="setting-row">
-          <label>
-            <input type="checkbox" id="toggle-debug-pane">
-            <span>Debug Pane</span>
-          </label>
-        </div>
-        <div class="setting-row">
-          <label>
-            <input type="checkbox" id="toggle-compass" checked>
-            <span>Compass Ring</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="settings-section">
         <h3>About</h3>
         <div class="setting-row">
           <span>Version</span>
           <span id="settings-version">v1.0.0</span>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Data</h3>
+        <div class="setting-row">
+          <button id="clear-storage-btn" class="picker-btn danger" style="width: 100%;">Clear All Storage (Reset)</button>
         </div>
       </div>
     </div>
