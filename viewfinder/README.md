@@ -42,12 +42,9 @@ A **toposcope** (also called an **orientation plaque**, **orientation table**, o
 ## Quick Start
 
 ```bash
-# Option 1 (recommended): bundled HTTPS server with self-signed cert (LAN + mobile)
-# One-time: generate the cert in horizon-overlook/ (already done if key.pem/cert.pem exist):
-openssl req -x509 -newkey rsa:2048 -keyout horizon-overlook/key.pem -out horizon-overlook/cert.pem -days 365 -nodes -subj "/CN=localhost"
-
-# Start the server (serves viewfinder/ on https://0.0.0.0:5174):
-cd /path/to/repo && VIEWFINDER_DIR=$PWD/viewfinder node horizon-overlook/simple-server.cjs
+# Option 1 (recommended): Node HTTPS server with self-signed cert (LAN + mobile)
+# From repo root:
+node viewfinder/simple-server.cjs
 # On your phone: https://<your-mac-ip>:5174 (accept the self-signed cert warning)
 
 # Option 2: Python (HTTP only — no camera/compass on mobile)
@@ -68,16 +65,6 @@ ngrok http 5174
 3. Tap the **compass button** (top-left) to calibrate
 4. Select a visible landmark, point phone at it, tap **Calibrate**
 5. Pan phone 360° — markers move on the horizon line
-
-## Locations (Pre-loaded Tel Aviv Area)
-
-| Location | Type | Coordinates |
-|----------|------|-------------|
-| TelAviv ToHa2 | Building | 32.068444, 34.784437 |
-| KFS Water Tower | Landmark | 32.184258, 34.9103777 |
-| Sharonim Mall | Building | 32.13226, 34.9052418 |
-| Antipatris Fort | Landmark | 32.105094, 34.9304287 |
-| Menivim Tower | Building | 32.1735835, 34.8914394 |
 
 Add your own via the **Locations panel** (bottom drawer).
 

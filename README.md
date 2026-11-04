@@ -27,24 +27,18 @@ A lightweight digital toposcope (orientation plaque / viewfinder) web app that s
 ## Quick Start
 
 ```bash
-# Serve via HTTPS (required for camera/gps)
+# Option 1 (recommended): Node HTTPS server with self-signed cert (LAN + mobile)
+# From repo root:
+node viewfinder/simple-server.cjs
+# Then open https://<your-lan-ip>:5174 on your phone (accept self-signed cert)
 
-# Option 1: Node HTTPS server with self-signed cert (recommended for mobile)
-VIEWFINDER_DIR=$PWD/viewfinder node horizon-overlook/simple-server.cjs
-# Then open https://<your-lan-ip>:5174 on your phone
-
-# Option 2: Python (bind to 0.0.0.0 for network access)
+# Option 2: Python (HTTP only — no camera/compass on mobile)
 python3 -m http.server 5174 --bind 0.0.0.0 --directory viewfinder
 
 # Option 3: npx serve (HTTP)
 npx serve viewfinder -l 5174
 
-# Option 4: npx serve with self-signed cert (HTTPS for mobile testing)
-# Generate cert first (one-time):
-# openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"
-npx serve viewfinder -l 5174 --ssl-cert cert.pem --ssl-key key.pem
-
-# Option 5: ngrok for HTTPS (exposes local server to internet)
+# Option 4: ngrok for HTTPS (exposes local server to internet)
 ngrok http 5174
 # Use the https://xxx.ngrok.io URL on your Android phone
 ```
