@@ -64,6 +64,10 @@ const compassAutoCalibrateCheckbox = document.getElementById('compass-auto-calib
 // Level indicator
 const levelIndicatorToggle = document.getElementById('toggle-level-indicator');
 const levelIndicatorCanvas = document.getElementById('level-indicator');
+// Lane markers experiment (labels fan out above/below horizon)
+const laneModeToggle = document.getElementById('toggle-lane-mode');
+// Clean center wheel (no location triangles on the horizon in lane mode)
+const cleanWheelToggle = document.getElementById('toggle-clean-wheel');
 // GPS settings
 const gpsRateSlider = document.getElementById('gps-rate');
 const gpsRateValue = document.getElementById('gps-rate-value');
@@ -101,6 +105,10 @@ let compassZeroOffset = 0;
 let levelPitch = null;    // front-to-back tilt (beta)
 let levelRoll = null;     // left-to-right tilt (gamma)
 let levelIndicatorEnabled = false; // Default OFF
+// Lane markers experiment
+let laneModeEnabled = false; // Default OFF
+// Clean center wheel (only affects lane mode)
+let cleanWheelEnabled = true; // Default ON
 
 // Debug function (module scope so callbacks can use it)
 function debug(msg) {
@@ -214,11 +222,11 @@ async function init() {
     versionBadge.textContent = version;
   }
 
-  // Populate color and type selects in the location form
-  const colorSelect = document.getElementById('loc-color');
-  if (colorSelect) {
-    colorSelect.innerHTML = LOCATION_COLORS.map(c =>
-      `<option value="${c}" style="color: ${c}">${c}</option>`
+  // Populate color swatches and type select in the location form
+  const colorSwatches = document.getElementById('loc-color-swatches');
+  if (colorSwatches) {
+    colorSwatches.innerHTML = LOCATION_COLORS.map(c =>
+      `<button type="button" class="color-swatch" data-color="${c}" style="background: ${c}" aria-label="Color ${c}"></button>`
     ).join('');
   }
   const typeSelect = document.getElementById('loc-type');
@@ -500,6 +508,20 @@ async function init() {
     debug(`Level indicator: ${levelIndicatorEnabled ? 'on' : 'off'}`);
   });
 
+  // Lane markers experiment toggle
+  laneModeToggle?.addEventListener('change', (e) => {
+    laneModeEnabled = e.target.checked;
+    localStorage.setItem('viewfinder:laneMode', laneModeEnabled);
+    debug(`Lane markers: ${laneModeEnabled ? 'on' : 'off'}`);
+  });
+
+  // Clean center wheel toggle (lane mode only)
+  cleanWheelToggle?.addEventListener('change', (e) => {
+    cleanWheelEnabled = e.target.checked;
+    localStorage.setItem('viewfinder:cleanWheel', cleanWheelEnabled);
+    debug(`Clean wheel: ${cleanWheelEnabled ? 'on' : 'off'}`);
+  });
+
   // GPS rate slider
   gpsRateSlider?.addEventListener('input', (e) => {
     const rateMs = parseInt(e.target.value);
@@ -623,6 +645,28 @@ async function init() {
     levelIndicatorToggle.checked = false;
   }
 
+  // Load lane markers experiment preference (default off)
+  const laneModePref = localStorage.getItem('viewfinder:laneMode');
+  if (laneModePref !== null) {
+    laneModeEnabled = laneModePref === 'true';
+    laneModeToggle.checked = laneModeEnabled;
+    debug(`Loaded lane markers: ${laneModeEnabled ? 'on' : 'off'}`);
+  } else {
+    laneModeEnabled = false;
+    laneModeToggle.checked = false;
+  }
+
+  // Load clean wheel preference (default on)
+  const cleanWheelPref = localStorage.getItem('viewfinder:cleanWheel');
+  if (cleanWheelPref !== null) {
+    cleanWheelEnabled = cleanWheelPref === 'true';
+    cleanWheelToggle.checked = cleanWheelEnabled;
+    debug(`Loaded clean wheel: ${cleanWheelEnabled ? 'on' : 'off'}`);
+  } else {
+    cleanWheelEnabled = true;
+    cleanWheelToggle.checked = true;
+  }
+
   // Load GPS rate preference (default 10s)
   const gpsRatePref = localStorage.getItem('viewfinder:gpsRate');
   if (gpsRatePref !== null) {
@@ -680,6 +724,8 @@ function animate() {
       pitch: levelPitch,
       roll: levelRoll,
       showLevel: levelIndicatorEnabled,
+      laneMode: laneModeEnabled,
+      cleanWheel: cleanWheelEnabled,
     });
     overlay.draw();
   }
@@ -1115,8 +1161,19 @@ function renderLocationList() {
     return;
   }
 
-  list.innerHTML = locations.map(loc => `
-    <div class="location-item" data-id="${loc.id}">
+  renderEyeList(list);
+}
+
+/**
+ * Picker mode A: every item has an eye toggle. Hidden items render dimmed
+ * in place, under a "Hidden" subheader. Simple, no reordering needed.
+ */
+function renderEyeList(list) {
+  const shown = locations.filter(l => !l.hidden);
+  const hidden = locations.filter(l => l.hidden);
+
+  const itemHTML = (loc, isHidden) => `
+    <div class="location-item ${isHidden ? 'location-hidden' : ''}" data-id="${loc.id}">
       <div class="location-info">
         <span class="location-color" style="background: ${loc.color}"></span>
         <div class="location-details">
@@ -1129,13 +1186,34 @@ function renderLocationList() {
         </div>
       </div>
       <div class="location-actions">
+        <button class="icon-btn visibility-btn" data-id="${loc.id}" aria-label="${isHidden ? 'Show on overlay' : 'Hide from overlay'}">${isHidden ? '🚫' : '👁️'}</button>
         <button class="icon-btn edit-btn" data-id="${loc.id}">✏️</button>
         <button class="icon-btn delete-btn" data-id="${loc.id}">🗑️</button>
       </div>
     </div>
-  `).join('');
+  `;
 
-  // Event delegation
+  let html = '';
+  if (hidden.length > 0) {
+    html += `<div class="picker-section-label">Visible (${shown.length})</div>`;
+    html += shown.map(l => itemHTML(l, false)).join('');
+    html += `<div class="picker-section-label">Hidden (${hidden.length})</div>`;
+    html += hidden.map(l => itemHTML(l, true)).join('');
+  } else {
+    html += shown.map(l => itemHTML(l, false)).join('');
+  }
+  list.innerHTML = html;
+
+  attachLocationListEvents(list);
+}
+
+function attachLocationListEvents(list) {
+  list.querySelectorAll('.visibility-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleLocationHidden(e.currentTarget.dataset.id);
+    });
+  });
   list.querySelectorAll('.edit-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1157,6 +1235,21 @@ function renderLocationList() {
   });
 }
 
+function toggleLocationHidden(id) {
+  const loc = locations.find(l => l.id === id);
+  if (!loc) return;
+  setHidden(id, !loc.hidden);
+}
+
+function setHidden(id, isHidden) {
+  const loc = locations.find(l => l.id === id);
+  if (!loc || loc.hidden === isHidden) return;
+  loc.hidden = isHidden;
+  saveLocations(locations);
+  renderLocationList();
+  debug(`${loc.name} ${isHidden ? 'hidden from' : 'shown on'} overlay`);
+}
+
 function editLocation(id) {
   const loc = locations.find(l => l.id === id);
   if (!loc) return;
@@ -1167,10 +1260,10 @@ function editLocation(id) {
   document.getElementById('loc-lat').value = loc.lat;
   document.getElementById('loc-lon').value = loc.lon;
   document.getElementById('loc-alt').value = loc.alt || '';
-  document.getElementById('loc-color').value = loc.color;
   document.getElementById('loc-type').value = loc.type || 'custom';
 
   showLocationForm();
+  markSelectedSwatch(loc.color);
 }
 
 function deleteLocation(id) {
@@ -1232,6 +1325,18 @@ function setupLocationForm() {
   const form = document.getElementById('location-form');
   const cancelBtn = document.getElementById('loc-cancel-btn');
   const addBtn = document.getElementById('add-location-btn');
+  const colorSwatches = document.getElementById('loc-color-swatches');
+
+  // Swatch picker: click sets the hidden color input and highlights the
+  // selected swatch
+  colorSwatches?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.color-swatch');
+    if (!btn) return;
+    document.getElementById('loc-color').value = btn.dataset.color;
+    colorSwatches.querySelectorAll('.color-swatch').forEach(b =>
+      b.classList.toggle('selected', b === btn)
+    );
+  });
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1246,12 +1351,18 @@ function setupLocationForm() {
       return;
     }
 
+    let color = document.getElementById('loc-color').value;
+    if (!color) {
+      // Default for a new location opened without swatch selection
+      color = getNextColor(locations);
+    }
+
     const locData = {
       name: document.getElementById('loc-name').value.trim(),
       lat,
       lon,
       alt,
-      color: document.getElementById('loc-color').value,
+      color,
       type: document.getElementById('loc-type').value,
     };
 
@@ -1275,9 +1386,18 @@ function setupLocationForm() {
   addBtn?.addEventListener('click', () => {
     form.reset();
     delete form.dataset.editId;
-    document.getElementById('loc-color').value = getNextColor(locations);
     showLocationForm();
+    // Highlight the suggested color for the new location
+    markSelectedSwatch(getNextColor(locations));
   });
+}
+
+/** Highlight the swatch matching `color` (call after the form is visible). */
+function markSelectedSwatch(color) {
+  document.getElementById('loc-color').value = color;
+  document.querySelectorAll('#loc-color-swatches .color-swatch').forEach(b =>
+    b.classList.toggle('selected', b.dataset.color === color)
+  );
 }
 
 // Initialize everything when DOM ready

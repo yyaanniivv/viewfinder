@@ -134,6 +134,18 @@
             <span>Level Indicator</span>
           </label>
         </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-lane-mode">
+            <span>Lane Markers (labels above/below)</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="toggle-clean-wheel" checked>
+            <span>Clean Center Wheel (no pointers)</span>
+          </label>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -277,11 +289,11 @@
             <div class="field-row">
               <div class="field">
                 <label>Latitude</label>
-                <input type="number" step="0.000001" id="loc-lat" placeholder="32.068444" required>
+                <input type="number" step="any" id="loc-lat" placeholder="32.068444" required>
               </div>
               <div class="field">
                 <label>Longitude</label>
-                <input type="number" step="0.000001" id="loc-lon" placeholder="34.784437" required>
+                <input type="number" step="any" id="loc-lon" placeholder="34.784437" required>
               </div>
             </div>
             <div class="field-row">
@@ -301,7 +313,8 @@
             </div>
             <div class="field">
               <label>Color</label>
-              <select id="loc-color"></select>
+              <div id="loc-color-swatches" class="color-swatches" role="radiogroup" aria-label="Location color"></div>
+              <input type="hidden" id="loc-color" value="">
             </div>
             <div class="form-actions">
               <button type="button" id="loc-cancel-btn" class="cancel-btn">Cancel</button>

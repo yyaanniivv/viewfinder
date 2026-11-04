@@ -607,6 +607,53 @@ select {
   opacity: 1;
 }
 
+/* --- Location picker: visible/hidden --- */
+.location-item.location-hidden {
+  opacity: 0.45;
+  background: rgba(255,255,255,0.02);
+}
+
+.location-item.location-hidden .location-name {
+  color: var(--text-muted);
+}
+
+.picker-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 4px 2px 0;
+}
+
+/* Color swatch picker (location form) */
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 0 2px;
+}
+
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.25);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s;
+}
+
+.color-swatch:active {
+  transform: scale(0.9);
+}
+
+.color-swatch.selected {
+  border-color: #FFFFFF;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.4), inset 0 0 0 2px rgba(0,0,0,0.25);
+}
+
 /* Overlay (calibration) */
 .overlay {
   position: fixed;
