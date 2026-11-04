@@ -134,8 +134,8 @@ export function createLocation(
 export const SAMPLE_LOCATIONS: Omit<Location, 'id'>[] = [
   {
     name: 'TelAviv ToHa2',
-    lat: 32.068444,
-    lon: 34.784437,
+    lat: 32.0724238,
+    lon: 34.7962598,
     alt: 150,
     color: '#FF6B6B',
     type: 'building',
@@ -150,8 +150,8 @@ export const SAMPLE_LOCATIONS: Omit<Location, 'id'>[] = [
   },
   {
     name: 'Sharonim Mall',
-    lat: 32.13226,
-    lon: 34.9052418,
+    lat: 32.132263,
+    lon: 34.903191,
     alt: 50,
     color: '#45B7D1',
     type: 'building',
@@ -169,6 +169,14 @@ export const SAMPLE_LOCATIONS: Omit<Location, 'id'>[] = [
     lat: 32.173583501562206,
     lon: 34.891439377458674,
     alt: 100,
+    color: '#FB5607',
+    type: 'building',
+  },
+  {
+    name: 'Migdal Tsedek',
+    lat: 32.0810141,
+    lon: 34.9575718,
+    alt: 250,
     color: '#FB5607',
     type: 'building',
   },
