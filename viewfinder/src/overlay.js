@@ -324,12 +324,12 @@ export class Overlay {
       const isBehind = Math.abs(relSigned) > FOV_DEG / 2;
 
       if (!isBehind) {
-        visible.push({ loc, screenX, distance, relBearing, isEdge: false });
+        visible.push({ loc, screenX, distance, relBearing, relSigned, isEdge: false });
       } else {
         // Off-screen: clamp just inside the viewport; side = direction to
         // the actual marker (chevron points that way)
         const clampedX = screenX < 0 ? 26 : w - 26;
-        edge.push({ loc, screenX: clampedX, distance, relBearing, isEdge: true, side: relSigned < 0 ? -1 : 1 });
+        edge.push({ loc, screenX: clampedX, distance, relBearing, relSigned, isEdge: true, side: relSigned < 0 ? -1 : 1 });
       }
     });
 
@@ -343,6 +343,14 @@ export class Overlay {
       ctx.font = '10px ui-monospace, monospace';
       const bearingWidth = ctx.measureText(`${Math.round(m.relBearing)}°`).width;
       m.boxW = Math.min(textWidth + bearingWidth + 8 * 3 + (m.isEdge ? 14 : 0), w - 24);
+    }
+
+    // Clean wheel → fixed 5-lane layout: the horizon carries only the
+    // cardinal letters; every location is a self-contained label box
+    // (name + direction pointer) in one of 4 label lanes (2 above, 2 below)
+    if (this.cleanWheel) {
+      this.drawFixedLanes(sorted, w, h);
+      return;
     }
 
     // --- Lane assignment ---
@@ -498,6 +506,129 @@ export class Overlay {
       // Edge boxes carry a direction chevron instead of the bearing readout
       // (the chevron sits where the bearing would render)
       if (!m.isEdge) {
+        ctx.fillText(`${Math.round(m.relBearing)}°`, boxX + m.boxW - 8, boxY + boxH / 2 + 1);
+      }
+    }
+  }
+
+  /**
+   * FIXED LANES (clean wheel): the horizon keeps only N/E/S/W. Every
+   * location renders as a self-contained label box — name • distance
+   * plus a pointer chevron on the side of its true azimuth — placed in
+   * one of 4 lanes: L1/L2 above the horizon, L-1/L-2 below. The box is
+   * centered on the azimuth; when the azimuth would push it off-screen
+   * it clamps and the chevron + plumb line still mark the true spot.
+   *
+   * More than 4 locations: lanes 1 (inner) are shared first — a box is
+   * accepted into a shared lane only when it doesn't horizontally
+   * overlap the box already there; otherwise it spills to lane 2, then
+   * (beyond 5 locations) stacks further out with a dimmed plumb line
+   * still anchoring it to its azimuth.
+   */
+  drawFixedLanes(sorted, w, h) {
+    const { ctx } = this;
+    const boxH = 24;
+    const LANE_1 = 42;        // inner lane distance from the horizon
+    const LANE_2 = 86;        // outer lane distance
+    const MAX_LANES_PER_SIDE = 2;
+
+    // Pass 1: assign each location to a (side, lane). Inner lanes first;
+    // a shared slot requires ≥12px horizontal separation from the box
+    // already in it.
+    const slots = { above: [-1, -1], below: [-1, -1] }; // right edge per slot
+    for (const m of sorted) {
+      const chevronSide = m.isEdge ? m.side : (m.relSigned < 0 ? -1 : 1);
+      m.chev = chevronSide;
+      // Prefer the side the chevron points toward (label drifts toward
+      // where the user should look); fall back by order for balance
+      let sides = chevronSide < 0 ? ['above', 'below'] : ['below', 'above'];
+      let placed = false;
+      for (const sName of sides) {
+        for (let lane = 0; lane < MAX_LANES_PER_SIDE; lane++) {
+          const right = slots[sName][lane];
+          const left = m.screenX - m.boxW / 2;
+          if (right === -1 || left - right >= 12) {
+            slots[sName][lane] = m.screenX + m.boxW / 2;
+            m.laneSide = sName;
+            m.laneIdx = lane;
+            placed = true;
+            break;
+          }
+        }
+        if (placed) break;
+      }
+      if (!placed) {
+        // All 4 lanes' slots taken at this x — stack on the outermost
+        // lane of the chevron side, further out
+        m.laneSide = chevronSide < 0 ? 'above' : 'below';
+        m.laneIdx = MAX_LANES_PER_SIDE; // lane 3rd row (overflow)
+        slots[m.laneSide][MAX_LANES_PER_SIDE - 1] = m.screenX + m.boxW / 2;
+      }
+    }
+
+    // Pass 2: draw
+    for (const m of sorted) {
+      const below = m.laneSide === 'below';
+      const laneY = below
+        ? this.horizonY + (m.laneIdx === 0 ? LANE_1 : LANE_2) + (m.laneIdx > 1 ? (m.laneIdx - 1) * 34 : 0)
+        : this.horizonY - (m.laneIdx === 0 ? LANE_1 : LANE_2) - (m.laneIdx > 1 ? (m.laneIdx - 1) * 34 : 0);
+      const boxY = laneY - boxH / 2;
+      let boxX = m.screenX - m.boxW / 2;
+      boxX = Math.max(8, Math.min(boxX, w - m.boxW - 8));
+
+      // Dashed plumb line at the true azimuth: wheel → lane. This is the
+      // only thing crossing the wheel area — cardinal letters stay alone.
+      const lineStart = below ? this.horizonY + 6 : this.horizonY - 6;
+      const lineEnd = below ? boxY - 4 : boxY + boxH + 4;
+      ctx.strokeStyle = m.laneIdx > 1 ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 5]);
+      ctx.beginPath();
+      ctx.moveTo(m.screenX, lineStart);
+      ctx.lineTo(m.screenX, lineEnd);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Label box
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      this.roundRect(ctx, boxX, boxY, m.boxW, boxH, 6);
+      ctx.fill();
+
+      // Color strip on the left edge
+      ctx.fillStyle = m.loc.color;
+      this.roundRect(ctx, boxX, boxY, 4, boxH, 2);
+      ctx.fill();
+
+      // Pointer chevron inside the box, on the side of the azimuth
+      const cx = m.chev < 0 ? boxX + 16 : boxX + m.boxW - 16;
+      const cy = boxY + boxH / 2;
+      ctx.strokeStyle = m.loc.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (m.chev < 0) {
+        ctx.moveTo(cx + 5, cy - 6);
+        ctx.lineTo(cx - 2, cy);
+        ctx.lineTo(cx + 5, cy + 6);
+      } else {
+        ctx.moveTo(cx - 5, cy - 6);
+        ctx.lineTo(cx + 2, cy);
+        ctx.lineTo(cx - 5, cy + 6);
+      }
+      ctx.stroke();
+
+      // Name • distance
+      const label = `${m.loc.name} • ${formatDistance(m.distance)}`;
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, m.chev < 0 ? boxX + 26 : boxX + 12, boxY + boxH / 2 + 1);
+
+      // Bearing readout (hidden on edge boxes — chevron takes that slot)
+      if (!m.isEdge) {
+        ctx.font = '10px ui-monospace, monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.textAlign = 'right';
         ctx.fillText(`${Math.round(m.relBearing)}°`, boxX + m.boxW - 8, boxY + boxH / 2 + 1);
       }
     }
