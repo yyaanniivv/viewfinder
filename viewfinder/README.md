@@ -122,6 +122,44 @@ screenX = centerX + (bearing - compassHeading) × (canvasWidth / FOV)
 
 FOV assumed ~90° horizontal. Markers wrap at ±180°.
 
+## Settings Reference
+
+All settings live in the gear panel (tap the version badge). Defaults in
+parentheses; every value persists to `localStorage`.
+
+**Panel Visibility**
+| Setting | Default | Effect |
+|---|---|---|
+| Locations Panel | off | Bottom drawer with the location list |
+| Debug Pane | off | Log pane for events/errors |
+| Compass Ring | on | The dial button (tap to calibrate) |
+
+**Camera**
+| Setting | Default | Effect |
+|---|---|---|
+| Camera Enabled | off | Camera feed on/off (toggle also in the toolbar) |
+| Start Camera Automatically | off | Start the feed on page load |
+
+**GPS**
+| Setting | Default | Effect |
+|---|---|---|
+| Update Rate | 10s | `watchPosition` refresh interval |
+
+**Compass**
+| Setting | Default | Effect |
+|---|---|---|
+| Invert Compass Direction | off | Flip alpha if the compass reads backwards |
+| Update Rate (ms) | 100 | Heading event throttle |
+| Zero Offset (°) | 0 | Static correction if North reads off |
+| Auto-calibrate on Figure-8 | off | Reserved for figure-8 detection (not yet implemented) |
+| Level Indicator | off | On-canvas spirit-level gauge while panning |
+| Show Level/Tilted Tag | off | ⚖️ Level/Tilted pill in the status bar |
+| Lane Markers | off | Lane-mode overlay (see Overlay Marker Modes) |
+| Clean Center Wheel | on | Lane mode: wheel keeps only N/E/S/W, labels self-contained in 2+2 lanes |
+
+**Data** — "Clear All Storage (Reset)" wipes locations, settings, and
+calibration.
+
 ## Overlay Marker Modes
 
 The canvas overlay (`src/overlay.js`) draws locations in one of two modes,
