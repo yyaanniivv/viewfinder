@@ -133,14 +133,6 @@ calibratedHeading = normalize(compassAlpha - offset)
 
 Persisted to `localStorage` (survives reload).
 
-## Requirements
-
-- **Android Chrome** (recommended) — full compass + GPS + camera support
-- **iOS Safari** — works with `webkitCompassHeading` (see Mobile section)
-- **Desktop Chrome** — UI testing only (mock GPS, no compass)
-- HTTPS required for camera/GPS/motion on mobile (use self-signed cert or ngrok)
-- Permissions: see [Required Mobile Permissions](#required-mobile-permissions)
-
 ## Future Ideas
 
 - MapLibre map panel for location picking
