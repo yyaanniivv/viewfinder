@@ -68,8 +68,6 @@ const levelIndicatorCanvas = document.getElementById('level-indicator');
 const laneModeToggle = document.getElementById('toggle-lane-mode');
 // Clean center wheel (no location triangles on the horizon in lane mode)
 const cleanWheelToggle = document.getElementById('toggle-clean-wheel');
-// Divider picker (drag locations across a visible/hidden divider line)
-const pickerDividerToggle = document.getElementById('toggle-picker-divider');
 // GPS settings
 const gpsRateSlider = document.getElementById('gps-rate');
 const gpsRateValue = document.getElementById('gps-rate-value');
@@ -111,8 +109,6 @@ let levelIndicatorEnabled = false; // Default OFF
 let laneModeEnabled = false; // Default OFF
 // Clean center wheel (only affects lane mode)
 let cleanWheelEnabled = true; // Default ON
-// Divider picker style for the locations panel
-let pickerDividerEnabled = false; // Default OFF (tap the eye button instead)
 
 // Debug function (module scope so callbacks can use it)
 function debug(msg) {
@@ -526,14 +522,6 @@ async function init() {
     debug(`Clean wheel: ${cleanWheelEnabled ? 'on' : 'off'}`);
   });
 
-  // Divider picker style toggle (locations panel)
-  pickerDividerToggle?.addEventListener('change', (e) => {
-    pickerDividerEnabled = e.target.checked;
-    localStorage.setItem('viewfinder:pickerDivider', pickerDividerEnabled);
-    renderLocationList();
-    debug(`Divider picker: ${pickerDividerEnabled ? 'on' : 'off'}`);
-  });
-
   // GPS rate slider
   gpsRateSlider?.addEventListener('input', (e) => {
     const rateMs = parseInt(e.target.value);
@@ -677,17 +665,6 @@ async function init() {
   } else {
     cleanWheelEnabled = true;
     cleanWheelToggle.checked = true;
-  }
-
-  // Load divider picker preference (default off)
-  const pickerDividerPref = localStorage.getItem('viewfinder:pickerDivider');
-  if (pickerDividerPref !== null) {
-    pickerDividerEnabled = pickerDividerPref === 'true';
-    pickerDividerToggle.checked = pickerDividerEnabled;
-    debug(`Loaded divider picker: ${pickerDividerEnabled ? 'on' : 'off'}`);
-  } else {
-    pickerDividerEnabled = false;
-    pickerDividerToggle.checked = false;
   }
 
   // Load GPS rate preference (default 10s)
@@ -1184,11 +1161,7 @@ function renderLocationList() {
     return;
   }
 
-  if (pickerDividerEnabled) {
-    renderDividerList(list);
-  } else {
-    renderEyeList(list);
-  }
+  renderEyeList(list);
 }
 
 /**
@@ -1234,47 +1207,6 @@ function renderEyeList(list) {
   attachLocationListEvents(list);
 }
 
-/**
- * Picker mode B: drag items across a horizontal divider line. Items above
- * the line are visible on the overlay, below are hidden. On touch: drag;
- * also a tap toggles placement as a fallback.
- */
-function renderDividerList(list) {
-  const above = locations.filter(l => !l.hidden);
-  const below = locations.filter(l => l.hidden);
-
-  const itemHTML = (loc, isHidden) => `
-    <div class="location-item draggable ${isHidden ? 'location-hidden' : ''}"
-         data-id="${loc.id}" draggable="true">
-      <span class="drag-handle">⠿</span>
-      <div class="location-info">
-        <span class="location-color" style="background: ${loc.color}"></span>
-        <div class="location-details">
-          <span class="location-name">${loc.name}</span>
-          <span class="location-meta">
-            ${loc.type ? `<span class="type-emoji">${getTypeEmoji(loc.type)}</span>` : ''}
-            ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}
-          </span>
-        </div>
-      </div>
-      <div class="location-actions">
-        <button class="icon-btn edit-btn" data-id="${loc.id}">✏️</button>
-        <button class="icon-btn delete-btn" data-id="${loc.id}">🗑️</button>
-      </div>
-    </div>
-  `;
-
-  let html = '<div class="picker-section-label">Visible</div>';
-  html += above.length ? above.map(l => itemHTML(l, false)).join('') : '<p class="empty picker-drop-hint">Drag locations above this line to show them</p>';
-  html += '<div id="picker-divider" class="picker-divider"><span class="picker-divider-label">— hide below —</span></div>';
-  html += '<div class="picker-below-zone">';
-  html += below.length ? below.map(l => itemHTML(l, true)).join('') : '<p class="empty picker-drop-hint">Drop here to hide</p>';
-  html += '</div>';
-  list.innerHTML = html;
-
-  attachDividerEvents(list);
-}
-
 function attachLocationListEvents(list) {
   list.querySelectorAll('.visibility-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -1300,67 +1232,6 @@ function attachLocationListEvents(list) {
       const id = e.currentTarget.closest('.location-item').dataset.id;
       selectLocation(id);
     });
-  });
-}
-
-function attachDividerEvents(list) {
-  attachLocationListEvents(list); // edit/delete/select still work
-
-  const divider = list.querySelector('#picker-divider');
-
-  // HTML5 drag & drop (desktop)
-  list.querySelectorAll('.location-item.draggable').forEach(item => {
-    item.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('text/plain', item.dataset.id);
-      item.classList.add('dragging');
-    });
-    item.addEventListener('dragend', () => item.classList.remove('dragging'));
-  });
-
-  if (divider) {
-    divider.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      divider.classList.add('drop-target');
-    });
-    divider.addEventListener('dragleave', () => divider.classList.remove('drop-target'));
-    divider.addEventListener('drop', (e) => {
-      e.preventDefault();
-      divider.classList.remove('drop-target');
-      const id = e.dataTransfer.getData('text/plain');
-      if (id) setHidden(id, true);
-    });
-
-    // Dropping anywhere in the list above the divider shows the location
-    list.addEventListener('dragover', (e) => e.preventDefault());
-    list.addEventListener('drop', (e) => {
-      const id = e.dataTransfer.getData('text/plain');
-      if (!id) return;
-      e.preventDefault();
-      // If the drop was on the divider itself, it's handled there
-      if (e.target === divider || divider.contains(e.target)) return;
-      const rect = divider.getBoundingClientRect();
-      const droppedBelow = e.clientY > rect.top;
-      setHidden(id, droppedBelow);
-    });
-  }
-
-  // Touch fallback: long-press an item to toggle its side (HTML5 DnD
-  // doesn't fire on mobile)
-  let pressTimer = null;
-  list.querySelectorAll('.location-item.draggable').forEach(item => {
-    item.addEventListener('touchstart', () => {
-      pressTimer = setTimeout(() => {
-        const id = item.dataset.id;
-        const loc = locations.find(l => l.id === id);
-        if (loc) {
-          setHidden(id, !loc.hidden);
-          if (navigator.vibrate) navigator.vibrate(30);
-        }
-      }, 600);
-    }, { passive: true });
-    ['touchend', 'touchmove', 'touchcancel'].forEach(ev =>
-      item.addEventListener(ev, () => clearTimeout(pressTimer), { passive: true })
-    );
   });
 }
 

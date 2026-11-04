@@ -626,52 +626,6 @@ select {
   padding: 4px 2px 0;
 }
 
-/* Divider picker */
-.drag-handle {
-  color: var(--text-muted);
-  font-size: 14px;
-  cursor: grab;
-  padding: 0 2px;
-  user-select: none;
-}
-
-.location-item.dragging {
-  opacity: 0.4;
-}
-
-.picker-divider {
-  position: relative;
-  height: 2px;
-  background: var(--accent, #4ECDC4);
-  margin: 10px 0;
-  border-radius: 1px;
-  transition: box-shadow 0.15s;
-}
-
-.picker-divider.drop-target {
-  box-shadow: 0 0 0 4px rgba(78, 205, 196, 0.25);
-  height: 4px;
-}
-
-.picker-divider-label {
-  position: absolute;
-  right: 0;
-  top: -18px;
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.picker-below-zone {
-  min-height: 40px;
-}
-
-.picker-drop-hint {
-  font-size: 12px;
-  padding: 8px;
-}
-
 /* Overlay (calibration) */
 .overlay {
   position: fixed;
