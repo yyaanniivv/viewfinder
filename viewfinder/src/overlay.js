@@ -23,6 +23,9 @@ export class Overlay {
     this.isCalibrated = options.isCalibrated || false;
     // Level indicator
     this.showLevel = options.showLevel !== false; // default on
+    // Lane markers experiment: fan locations out above/below the horizon
+    // instead of stacking all labels below it
+    this.laneMode = options.laneMode || false;
     this.pitch = null;   // front-to-back tilt (beta), degrees
     this.roll = null;    // left-to-right tilt (gamma), degrees
     this.horizonY = null;
@@ -53,6 +56,7 @@ export class Overlay {
     if (data.pitch !== undefined) this.pitch = data.pitch;
     if (data.roll !== undefined) this.roll = data.roll;
     if (data.showLevel !== undefined) this.showLevel = data.showLevel;
+    if (data.laneMode !== undefined) this.laneMode = data.laneMode;
   }
 
   draw() {
@@ -69,7 +73,11 @@ export class Overlay {
     this.drawCompassTicks(w);
 
     // Draw location markers
-    this.drawMarkers(w);
+    if (this.laneMode) {
+      this.drawMarkersLanes(w);
+    } else {
+      this.drawMarkers(w);
+    }
 
     // Draw level indicator (center, wide — helps align device while panning)
     if (this.showLevel && this.pitch !== null && this.roll !== null) {
@@ -277,6 +285,122 @@ export class Overlay {
     visible.forEach(m => {
       this.drawMarker(m.screenX, this.horizonY, m.loc, m.distance, m.relBearing, m.labelRow || 0);
     });
+  }
+
+  /**
+   * EXPERIMENT: lane mode — the horizon stays a clean "center wheel"
+   * (pointer triangles only), and each location's label lives in its own
+   * horizontal lane above or below the line. Near-azimuth locations no
+   * longer collide: their pointers sit together on the line while their
+   * labels fan out vertically on separate rows.
+   */
+  drawMarkersLanes(w) {
+    if (!this.userPosition) return;
+
+    const { ctx } = this;
+    const visible = [];
+    this.locations.forEach(loc => {
+      const trueBearing = bearing(this.userPosition, loc);
+      const distance = haversineDistance(this.userPosition, loc);
+      const calibratedBearing = normalizeBearing(trueBearing - this.headingOffset);
+      const relBearing = normalizeBearing(calibratedBearing - this.compassHeading);
+
+      let screenX = this.centerX + relBearing * this.pxPerDeg;
+      if (relBearing > 180) {
+        screenX = this.centerX + (relBearing - 360) * this.pxPerDeg;
+      }
+
+      const isOnScreen = screenX > -50 && screenX < w + 50;
+      const isBehind = Math.abs(relBearing) > FOV_DEG / 2;
+
+      if (isOnScreen && !isBehind) {
+        visible.push({ loc, screenX, distance, relBearing });
+      } else if (isOnScreen && isBehind) {
+        this.drawEdgeMarker(screenX < 0 ? 20 : w - 20, this.horizonY, loc, distance, screenX < 0);
+      }
+    });
+
+    // Sort left-to-right, then alternate lanes: even markers go above the
+    // horizon, odd ones below. Within each side, deeper rows fan outward.
+    const sorted = [...visible].sort((a, b) => a.screenX - b.screenX);
+
+    // Pre-measure label widths
+    for (const m of sorted) {
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      const textWidth = ctx.measureText(`${m.loc.name} • ${formatDistance(m.distance)}`).width;
+      ctx.font = '10px ui-monospace, monospace';
+      const bearingWidth = ctx.measureText(`${Math.round(m.relBearing)}°`).width;
+      m.boxW = Math.min(textWidth + bearingWidth + 8 * 3, w - 24);
+    }
+
+    // Lane assignment: alternate above/below so neighbours never share a row
+    let aboveCount = 0;
+    let belowCount = 0;
+    const LANE_GAP = 38;      // vertical spacing between lanes on the same side
+    const FIRST_LANE = 46;    // distance of lane 0 from the horizon line
+    for (let i = 0; i < sorted.length; i++) {
+      const m = sorted[i];
+      const above = i % 2 === 0;
+      const row = above ? aboveCount++ : belowCount++;
+      m.laneY = above
+        ? this.horizonY - FIRST_LANE - row * LANE_GAP
+        : this.horizonY + FIRST_LANE + row * LANE_GAP;
+    }
+
+    // Draw each: pointer at the horizon + floating label in its lane
+    for (const m of sorted) {
+      // Pointer triangle on the horizon (the "wheel" itself stays clean)
+      const TRI_H = 10;
+      const TRI_W = 12;
+      ctx.beginPath();
+      ctx.moveTo(m.screenX, this.horizonY + TRI_H);
+      ctx.lineTo(m.screenX - TRI_W / 2, this.horizonY);
+      ctx.lineTo(m.screenX + TRI_W / 2, this.horizonY);
+      ctx.closePath();
+      ctx.fillStyle = m.loc.color;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Label box centered in its lane, clamped to the viewport
+      const boxH = 20;
+      let boxX = m.screenX - m.boxW / 2;
+      boxX = Math.max(8, Math.min(boxX, w - m.boxW - 8));
+      const boxY = m.laneY - boxH / 2;
+
+      // Subtle connector: hairline from pointer to lane (kept faint so it
+      // doesn't recreate the clutter — easy to drop entirely)
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 4]);
+      ctx.beginPath();
+      ctx.moveTo(m.screenX, m.laneY > this.horizonY ? this.horizonY + TRI_H : this.horizonY - TRI_H);
+      ctx.lineTo(m.screenX, m.laneY + (m.laneY > this.horizonY ? -boxH / 2 : boxH / 2));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      this.roundRect(ctx, boxX, boxY, m.boxW, boxH, 6);
+      ctx.fill();
+
+      // Color strip on the left edge
+      ctx.fillStyle = m.loc.color;
+      this.roundRect(ctx, boxX, boxY, 4, boxH, 2);
+      ctx.fill();
+
+      const label = `${m.loc.name} • ${formatDistance(m.distance)}`;
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, boxX + 12, boxY + boxH / 2 + 1);
+
+      ctx.font = '10px ui-monospace, monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${Math.round(m.relBearing)}°`, boxX + m.boxW - 8, boxY + boxH / 2 + 1);
+    }
   }
 
   /**

@@ -64,6 +64,8 @@ const compassAutoCalibrateCheckbox = document.getElementById('compass-auto-calib
 // Level indicator
 const levelIndicatorToggle = document.getElementById('toggle-level-indicator');
 const levelIndicatorCanvas = document.getElementById('level-indicator');
+// Lane markers experiment (labels fan out above/below horizon)
+const laneModeToggle = document.getElementById('toggle-lane-mode');
 // GPS settings
 const gpsRateSlider = document.getElementById('gps-rate');
 const gpsRateValue = document.getElementById('gps-rate-value');
@@ -101,6 +103,8 @@ let compassZeroOffset = 0;
 let levelPitch = null;    // front-to-back tilt (beta)
 let levelRoll = null;     // left-to-right tilt (gamma)
 let levelIndicatorEnabled = false; // Default OFF
+// Lane markers experiment
+let laneModeEnabled = false; // Default OFF
 
 // Debug function (module scope so callbacks can use it)
 function debug(msg) {
@@ -500,6 +504,13 @@ async function init() {
     debug(`Level indicator: ${levelIndicatorEnabled ? 'on' : 'off'}`);
   });
 
+  // Lane markers experiment toggle
+  laneModeToggle?.addEventListener('change', (e) => {
+    laneModeEnabled = e.target.checked;
+    localStorage.setItem('viewfinder:laneMode', laneModeEnabled);
+    debug(`Lane markers: ${laneModeEnabled ? 'on' : 'off'}`);
+  });
+
   // GPS rate slider
   gpsRateSlider?.addEventListener('input', (e) => {
     const rateMs = parseInt(e.target.value);
@@ -623,6 +634,17 @@ async function init() {
     levelIndicatorToggle.checked = false;
   }
 
+  // Load lane markers experiment preference (default off)
+  const laneModePref = localStorage.getItem('viewfinder:laneMode');
+  if (laneModePref !== null) {
+    laneModeEnabled = laneModePref === 'true';
+    laneModeToggle.checked = laneModeEnabled;
+    debug(`Loaded lane markers: ${laneModeEnabled ? 'on' : 'off'}`);
+  } else {
+    laneModeEnabled = false;
+    laneModeToggle.checked = false;
+  }
+
   // Load GPS rate preference (default 10s)
   const gpsRatePref = localStorage.getItem('viewfinder:gpsRate');
   if (gpsRatePref !== null) {
@@ -680,6 +702,7 @@ function animate() {
       pitch: levelPitch,
       roll: levelRoll,
       showLevel: levelIndicatorEnabled,
+      laneMode: laneModeEnabled,
     });
     overlay.draw();
   }
