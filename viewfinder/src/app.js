@@ -100,7 +100,7 @@ let compassZeroOffset = 0;
 // Level indicator state
 let levelPitch = null;    // front-to-back tilt (beta)
 let levelRoll = null;     // left-to-right tilt (gamma)
-let levelIndicatorEnabled = true;
+let levelIndicatorEnabled = false; // Default OFF
 
 // Debug function (module scope so callbacks can use it)
 function debug(msg) {
@@ -431,13 +431,22 @@ async function init() {
     settingsOverlay.style.display = 'none';
   });
 
+  // Close settings when clicking outside the panel
+  settingsOverlay?.addEventListener('click', (e) => {
+    if (e.target === settingsOverlay) {
+      settingsOverlay.style.display = 'none';
+    }
+  });
+
   // Settings checkboxes
   toggleLocationsPanel?.addEventListener('change', (e) => {
     locationsPanel.style.display = e.target.checked ? 'flex' : 'none';
+    locationsPanel.dataset.state = e.target.checked ? 'maximized' : 'minimized';
     localStorage.setItem('viewfinder:showLocations', e.target.checked);
   });
   toggleDebugPane?.addEventListener('change', (e) => {
     debugPane.style.display = e.target.checked ? 'flex' : 'none';
+    debugPane.dataset.state = e.target.checked ? 'maximized' : 'minimized';
     localStorage.setItem('viewfinder:showDebug', e.target.checked);
   });
   toggleCompass?.addEventListener('change', (e) => {
@@ -507,19 +516,35 @@ async function init() {
   if (showLocations !== null) {
     const show = showLocations === 'true';
     locationsPanel.style.display = show ? 'flex' : 'none';
+    locationsPanel.dataset.state = show ? 'maximized' : 'minimized';
     toggleLocationsPanel.checked = show;
+  } else {
+    // Default: ON
+    locationsPanel.style.display = 'flex';
+    locationsPanel.dataset.state = 'maximized';
+    toggleLocationsPanel.checked = true;
   }
   const showDebug = localStorage.getItem('viewfinder:showDebug');
   if (showDebug !== null) {
     const show = showDebug === 'true';
     debugPane.style.display = show ? 'flex' : 'none';
+    debugPane.dataset.state = show ? 'maximized' : 'minimized';
     toggleDebugPane.checked = show;
+  } else {
+    // Default: OFF
+    debugPane.style.display = 'none';
+    debugPane.dataset.state = 'minimized';
+    toggleDebugPane.checked = false;
   }
   const showCompass = localStorage.getItem('viewfinder:showCompass');
   if (showCompass !== null) {
     const show = showCompass === 'true';
     compassBtn.style.display = show ? 'flex' : 'none';
     toggleCompass.checked = show;
+  } else {
+    // Default: ON
+    compassBtn.style.display = 'flex';
+    toggleCompass.checked = true;
   }
 
   // Load saved camera preferences
@@ -545,6 +570,10 @@ async function init() {
     compassDirection = invert ? -1 : 1;
     compassInvertCheckbox.checked = invert;
     debug(`Loaded compass invert: ${invert ? 'on' : 'off'}`);
+  } else {
+    // Default: OFF (normal direction)
+    compassInvertCheckbox.checked = false;
+    compassDirection = 1;
   }
   const compassRatePref = localStorage.getItem('viewfinder:compassRate');
   if (compassRatePref !== null) {
@@ -558,6 +587,9 @@ async function init() {
     const autoCal = compassAutoCalibratePref === 'true';
     compassAutoCalibrateCheckbox.checked = autoCal;
     debug(`Loaded compass auto-calibrate: ${autoCal ? 'on' : 'off'}`);
+  } else {
+    // Default: OFF
+    compassAutoCalibrateCheckbox.checked = false;
   }
   const compassZeroOffsetPref = localStorage.getItem('viewfinder:compassZeroOffset');
   if (compassZeroOffsetPref !== null) {
@@ -568,12 +600,16 @@ async function init() {
     debug(`Loaded compass zero offset: ${offset}°`);
   }
 
-  // Load level indicator preference (default on)
+  // Load level indicator preference (default off)
   const levelIndicatorPref = localStorage.getItem('viewfinder:levelIndicator');
   if (levelIndicatorPref !== null) {
     levelIndicatorEnabled = levelIndicatorPref === 'true';
     levelIndicatorToggle.checked = levelIndicatorEnabled;
     debug(`Loaded level indicator: ${levelIndicatorEnabled ? 'on' : 'off'}`);
+  } else {
+    // Default: OFF
+    levelIndicatorEnabled = false;
+    levelIndicatorToggle.checked = false;
   }
 
   // Load GPS rate preference (default 10s)
