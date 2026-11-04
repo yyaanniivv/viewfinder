@@ -222,11 +222,11 @@ async function init() {
     versionBadge.textContent = version;
   }
 
-  // Populate color and type selects in the location form
-  const colorSelect = document.getElementById('loc-color');
-  if (colorSelect) {
-    colorSelect.innerHTML = LOCATION_COLORS.map(c =>
-      `<option value="${c}" style="color: ${c}">${c}</option>`
+  // Populate color swatches and type select in the location form
+  const colorSwatches = document.getElementById('loc-color-swatches');
+  if (colorSwatches) {
+    colorSwatches.innerHTML = LOCATION_COLORS.map(c =>
+      `<button type="button" class="color-swatch" data-color="${c}" style="background: ${c}" aria-label="Color ${c}"></button>`
     ).join('');
   }
   const typeSelect = document.getElementById('loc-type');
@@ -1260,10 +1260,10 @@ function editLocation(id) {
   document.getElementById('loc-lat').value = loc.lat;
   document.getElementById('loc-lon').value = loc.lon;
   document.getElementById('loc-alt').value = loc.alt || '';
-  document.getElementById('loc-color').value = loc.color;
   document.getElementById('loc-type').value = loc.type || 'custom';
 
   showLocationForm();
+  markSelectedSwatch(loc.color);
 }
 
 function deleteLocation(id) {
@@ -1325,6 +1325,18 @@ function setupLocationForm() {
   const form = document.getElementById('location-form');
   const cancelBtn = document.getElementById('loc-cancel-btn');
   const addBtn = document.getElementById('add-location-btn');
+  const colorSwatches = document.getElementById('loc-color-swatches');
+
+  // Swatch picker: click sets the hidden color input and highlights the
+  // selected swatch
+  colorSwatches?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.color-swatch');
+    if (!btn) return;
+    document.getElementById('loc-color').value = btn.dataset.color;
+    colorSwatches.querySelectorAll('.color-swatch').forEach(b =>
+      b.classList.toggle('selected', b === btn)
+    );
+  });
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1339,12 +1351,18 @@ function setupLocationForm() {
       return;
     }
 
+    let color = document.getElementById('loc-color').value;
+    if (!color) {
+      // Default for a new location opened without swatch selection
+      color = getNextColor(locations);
+    }
+
     const locData = {
       name: document.getElementById('loc-name').value.trim(),
       lat,
       lon,
       alt,
-      color: document.getElementById('loc-color').value,
+      color,
       type: document.getElementById('loc-type').value,
     };
 
@@ -1368,9 +1386,18 @@ function setupLocationForm() {
   addBtn?.addEventListener('click', () => {
     form.reset();
     delete form.dataset.editId;
-    document.getElementById('loc-color').value = getNextColor(locations);
     showLocationForm();
+    // Highlight the suggested color for the new location
+    markSelectedSwatch(getNextColor(locations));
   });
+}
+
+/** Highlight the swatch matching `color` (call after the form is visible). */
+function markSelectedSwatch(color) {
+  document.getElementById('loc-color').value = color;
+  document.querySelectorAll('#loc-color-swatches .color-swatch').forEach(b =>
+    b.classList.toggle('selected', b.dataset.color === color)
+  );
 }
 
 // Initialize everything when DOM ready
