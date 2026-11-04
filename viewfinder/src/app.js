@@ -519,10 +519,10 @@ async function init() {
     locationsPanel.dataset.state = show ? 'maximized' : 'minimized';
     toggleLocationsPanel.checked = show;
   } else {
-    // Default: ON
+    // Default: minimized
     locationsPanel.style.display = 'flex';
-    locationsPanel.dataset.state = 'maximized';
-    toggleLocationsPanel.checked = true;
+    locationsPanel.dataset.state = 'minimized';
+    toggleLocationsPanel.checked = false;
   }
   const showDebug = localStorage.getItem('viewfinder:showDebug');
   if (showDebug !== null) {
