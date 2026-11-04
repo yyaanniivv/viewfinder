@@ -41,19 +41,19 @@ A **toposcope** (also called an **orientation plaque**, **orientation table**, o
 
 ## Quick Start
 
+**Live:** https://yyaanniivv.github.io/viewfinder/ (GitHub Pages, HTTPS — camera/compass work on mobile with no cert warnings)
+
+Local development:
+
 ```bash
 # Option 1 (recommended): Node HTTPS server with self-signed cert (LAN + mobile)
-# From repo root:
 node simple-server.cjs
 # On your phone: https://<your-mac-ip>:5174 (accept the self-signed cert warning)
 
 # Option 2: Python (HTTP only — no camera/compass on mobile)
-python3 -m http.server 5174 --bind 0.0.0.0 --directory viewfinder
+python3 -m http.server 5174 --bind 0.0.0.0
 
-# Option 3: npx serve (HTTP)
-npx serve viewfinder -l 5174
-
-# Option 4: ngrok for HTTPS (exposes local server to internet)
+# Option 3: ngrok for HTTPS (exposes local server to internet)
 ngrok http 5174
 # Use the https://xxx.ngrok.io URL on your Android phone
 ```
