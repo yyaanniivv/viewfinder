@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = 5174;
-// Serve from current directory (viewfinder/) by default
+// Serve from the app directory (repo root)
 const PUBLIC_DIR = process.env.VIEWFINDER_DIR || __dirname;
 
 const options = {

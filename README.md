@@ -44,7 +44,7 @@ A **toposcope** (also called an **orientation plaque**, **orientation table**, o
 ```bash
 # Option 1 (recommended): Node HTTPS server with self-signed cert (LAN + mobile)
 # From repo root:
-node viewfinder/simple-server.cjs
+node simple-server.cjs
 # On your phone: https://<your-mac-ip>:5174 (accept the self-signed cert warning)
 
 # Option 2: Python (HTTP only — no camera/compass on mobile)
