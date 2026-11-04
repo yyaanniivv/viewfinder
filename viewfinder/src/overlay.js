@@ -1,6 +1,35 @@
 /**
  * Canvas overlay drawing for Viewfinder
  * Draws horizon line, compass ticks, location markers, and level indicator
+ *
+ * ── LANE LOGIC (lane mode) ──────────────────────────────────────────────
+ * Lane mode fans location labels out above/below the horizon instead of
+ * stacking everything on the line. Two layouts, per `cleanWheel`:
+ *
+ * 1. FIXED 5-LANE (cleanWheel on, default) — `drawFixedLanes`.
+ *    The horizon carries only N/E/S/W. Four label lanes: 42px above,
+ *    42px below, 86px above, 86px below. Each location is a self-
+ *    contained box: name • distance + chevron pointing at its azimuth.
+ *    Placement (per sorted screen order):
+ *      a. prefer the side the chevron points toward;
+ *      b. inner lanes first, sharing a slot only when boxes don't
+ *         horizontally overlap (≥12px);
+ *      c. overflow → 3rd row outward, dimmed plumb line.
+ *    Every box gets a dashed plumb line anchored at its TRUE azimuth
+ *    (screenX) — never at the box, so label width never shifts it.
+ *
+ * 2. ADAPTIVE (cleanWheel off) — the rest of `drawMarkersLanes`.
+ *    Pointer triangles back on the horizon; row gap compresses 38→27px
+ *    with row count; boxes reuse rows when horizontally separated.
+ *
+ * EDGE LOCATIONS: |relSigned| > 45° (FOV/2) → chevron at the screen edge
+ * pointing toward the real marker + label in a lane. relSigned must be
+ * the SIGNED relative bearing (>180 → −360); unsigned values send
+ * near-north locations to the wrong edge.
+ *
+ * VISIBILITY: `visibleLocations()` filters out locations flagged hidden
+ * (eye toggle in the Locations panel) in both marker modes.
+ * ────────────────────────────────────────────────────────────────────────
  */
 
 import { normalizeBearing, formatDistance, haversineDistance, bearing } from './geo.js';

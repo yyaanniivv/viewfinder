@@ -122,6 +122,67 @@ screenX = centerX + (bearing - compassHeading) × (canvasWidth / FOV)
 
 FOV assumed ~90° horizontal. Markers wrap at ±180°.
 
+## Overlay Marker Modes
+
+The canvas overlay (`src/overlay.js`) draws locations in one of two modes,
+selected by settings (see Settings → Compass section):
+
+### Classic mode (Lane Markers off)
+
+All markers sit on the horizon line: colored pointer triangles with label
+boxes stacked below (rows stagger downward when boxes would overlap).
+Off-screen locations render as edge arrows with mini labels.
+
+### Lane mode (Lane Markers on)
+
+The horizon becomes a clean "wheel" and location data fans out vertically
+into **lanes**. Two sub-modes, toggled by "Clean Center Wheel":
+
+- **Fixed 5-lane layout (Clean Center Wheel on, default)** — the horizon
+  carries only N/E/S/W letters and ticks. Every location renders as a
+  self-contained label box — `Name • distance` plus a pointer chevron on
+  the side of its true azimuth — in one of 4 label lanes: L1 42px above,
+  L1 42px below, L2 86px above, L2 86px below (see `drawFixedLanes`).
+
+  Placement rules:
+  1. A box prefers the side its chevron points toward (label drifts in
+     the direction you should look).
+  2. Inner lanes (L1) fill first; a second box joins a lane only when it
+     does not horizontally overlap the box already in it (≥12px gap).
+  3. If all 4 lanes are blocked at that x, the box spills to a 3rd row on
+     its chevron side with a dimmed plumb line. Beyond ~5 visible
+     locations the layout degrades by design — hide some locations via
+     the panel instead.
+
+  Each box also draws a **dashed plumb line** at its location's true
+  azimuth, from the wheel to the lane. The line anchors at `screenX` (the
+  exact azimuth position), never at the label box — so a short name and a
+  long name keep their anchor at the same spot even when their boxes clamp
+  at a screen edge. In clean-wheel mode a small colored dot marks the
+  azimuth on the wheel itself.
+
+- **Adaptive layout (Clean Center Wheel off)** — pointer triangles return
+  to the horizon, and lane positions squeeze adaptively: gap between rows
+  compresses from 38px to 27px as row count grows, boxes reuse rows when
+  horizontally separated, and everything clamps into safe areas (below
+  the tick labels, above the bottom panels).
+
+### Edge locations (off-screen)
+
+A location more than ±45° off the heading is off-screen. It renders as a
+chevron at the screen edge pointing toward the marker's real direction
+(marker off-screen left → chevron points left; panning that way brings it
+in), with its label box participating in the lane layout like every other
+location. Note the behind test uses the *signed* relative bearing
+(`relBearing > 180 → relBearing - 360`); testing the unsigned value
+misclassifies locations just past north.
+
+### Visibility
+
+Locations carry a persisted `hidden` flag (eye toggle in the Locations
+panel). Hidden locations stay in the list but are excluded from the
+overlay in both marker modes.
+
 ## Calibration
 
 ```

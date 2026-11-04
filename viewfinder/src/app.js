@@ -64,6 +64,8 @@ const compassAutoCalibrateCheckbox = document.getElementById('compass-auto-calib
 // Level indicator
 const levelIndicatorToggle = document.getElementById('toggle-level-indicator');
 const levelIndicatorCanvas = document.getElementById('level-indicator');
+// Level/Tilted status tag (⚖️ pill in the status bar)
+const levelTagToggle = document.getElementById('toggle-level-tag');
 // Lane markers experiment (labels fan out above/below horizon)
 const laneModeToggle = document.getElementById('toggle-lane-mode');
 // Clean center wheel (no location triangles on the horizon in lane mode)
@@ -105,6 +107,8 @@ let compassZeroOffset = 0;
 let levelPitch = null;    // front-to-back tilt (beta)
 let levelRoll = null;     // left-to-right tilt (gamma)
 let levelIndicatorEnabled = false; // Default OFF
+// Level/Tilted status tag
+let levelTagEnabled = false; // Default OFF
 // Lane markers experiment
 let laneModeEnabled = false; // Default OFF
 // Clean center wheel (only affects lane mode)
@@ -508,6 +512,14 @@ async function init() {
     debug(`Level indicator: ${levelIndicatorEnabled ? 'on' : 'off'}`);
   });
 
+  // Level/Tilted status tag toggle
+  levelTagToggle?.addEventListener('change', (e) => {
+    levelTagEnabled = e.target.checked;
+    localStorage.setItem('viewfinder:levelTag', levelTagEnabled);
+    updateStatus();
+    debug(`Level tag: ${levelTagEnabled ? 'on' : 'off'}`);
+  });
+
   // Lane markers experiment toggle
   laneModeToggle?.addEventListener('change', (e) => {
     laneModeEnabled = e.target.checked;
@@ -643,6 +655,17 @@ async function init() {
     // Default: OFF
     levelIndicatorEnabled = false;
     levelIndicatorToggle.checked = false;
+  }
+
+  // Load Level/Tilted tag preference (default off)
+  const levelTagPref = localStorage.getItem('viewfinder:levelTag');
+  if (levelTagPref !== null) {
+    levelTagEnabled = levelTagPref === 'true';
+    levelTagToggle.checked = levelTagEnabled;
+    debug(`Loaded level tag: ${levelTagEnabled ? 'on' : 'off'}`);
+  } else {
+    levelTagEnabled = false;
+    levelTagToggle.checked = false;
   }
 
   // Load lane markers experiment preference (default off)
@@ -839,12 +862,13 @@ function updateStatus() {
     statusGPS.className = gpsAccuracy && gpsAccuracy < 50 ? 'good' : 'warn';
   }
 
-  // Update level indicator (text status) — hidden when the overlay gauge is active
+  // Update level indicator (text status) — shown only when the tag setting
+  // is on, and hidden when the overlay gauge is active
   const statusLevel = document.getElementById('status-level');
   if (statusLevel) {
     const isLevel = window.compassIsLevel;
     const gaugeActive = levelIndicatorEnabled && levelPitch !== null;
-    if (isLevel !== undefined && !gaugeActive) {
+    if (levelTagEnabled && isLevel !== undefined && !gaugeActive) {
       statusLevel.style.display = 'inline-block';
       statusLevel.textContent = isLevel ? '⚖️ Level' : '⚖️ Tilted';
       statusLevel.className = isLevel ? 'good' : 'warn';
