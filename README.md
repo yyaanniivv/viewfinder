@@ -52,10 +52,6 @@ node simple-server.cjs
 
 # Option 2: Python (HTTP only — no camera/compass on mobile)
 python3 -m http.server 5174 --bind 0.0.0.0
-
-# Option 3: ngrok for HTTPS (exposes local server to internet)
-ngrok http 5174
-# Use the https://xxx.ngrok.io URL on your Android phone
 ```
 
 ## Required Mobile Permissions
