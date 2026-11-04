@@ -24,10 +24,10 @@ A **toposcope** (also called an **orientation plaque**, **orientation table**, o
 | API | iOS Safari | Android Chrome | Desktop Chrome |
 |-----|------------|----------------|----------------|
 | getUserMedia | ✅ 11+ | ✅ 53+ | ✅ |
-| OrientationSensor / compass | ✅ via `webkitCompassHeading` | ✅ AbsoluteOrientationSensor | ❌ No native compass |
+| Compass (absolute heading) | ✅ via `webkitCompassHeading` | ✅ AbsoluteOrientationSensor | ❌ No native compass |
 | Geolocation | ✅ 5+ | ✅ 5+ | ✅ (mock) |
 | Canvas 2D | ✅ Always | ✅ Always | ✅ |
-| **Full Functionality** | ⚠️ Absolute via webkitCompassHeading | ✅ **Yes** | ⚠️ Partial |
+| **Full Functionality** | ✅ **Yes** (with calibration) | ✅ **Yes** | ⚠️ Partial |
 
 **Note on absolute heading (true north):** Android Chrome provides it via the `AbsoluteOrientationSensor` API (preferred path). iOS Safari doesn't support that API, but its `deviceorientation` events carry `webkitCompassHeading` — the magnetometer's true-north heading — which the app uses as the absolute bearing on iOS. Devices with neither (older browsers, desktop) fall back to relative `alpha` heading, where the landmark calibration flow compensates.
 
@@ -58,13 +58,40 @@ ngrok http 5174
 # Use the https://xxx.ngrok.io URL on your Android phone
 ```
 
-## On Mobile (Android Chrome Only — iOS Not Supported)
+## Required Mobile Permissions
 
-1. Open the HTTPS URL (ngrok) on **Android Chrome**
+| Permission | iOS (Safari) | Android (Chrome) | Purpose |
+|------------|--------------|------------------|---------|
+| **Camera** | ✅ Required | ✅ Required | Rear camera feed for AR overlay |
+| **Location (GPS)** | ✅ Required | ✅ Required | Your position for bearing calculations |
+| **Motion & Orientation** | ✅ Required | ✅ Required | Compass heading (deviceorientation) |
+| **Orientation Sensor** | ❌ N/A | ✅ Optional | AbsoluteOrientationSensor (true north) |
+
+**iOS note:** iOS Safari uses `webkitCompassHeading` from `deviceorientation` events for absolute heading — no separate sensor permission needed beyond Motion & Orientation.
+
+---
+
+## On Mobile (Android Chrome & iOS Safari)
+
+### Android Chrome (full support)
+1. Open the HTTPS URL on **Android Chrome**
 2. Allow permissions: **Camera**, **Location**, **Motion & Orientation**
 3. Tap the **compass button** (top-left) to calibrate
 4. Select a visible landmark, point phone at it, tap **Calibrate**
 5. Pan phone 360° — markers move on the horizon line
+
+### iOS Safari (works with limitations)
+1. Open the HTTPS URL on **iOS Safari** (Chrome on iOS uses WebKit, same behavior)
+2. Allow permissions: **Camera**, **Location**, **Motion & Orientation** (Settings → Safari → Motion & Orientation Access)
+3. Tap the **compass button** (top-left) to calibrate
+4. Select a visible landmark, point phone at it, tap **Calibrate**
+5. Pan phone 360° — markers move on the horizon line
+
+**iOS limitations:**
+- No `AbsoluteOrientationSensor` API — relies on `webkitCompassHeading` (magnetometer-based)
+- Compass may drift more than Android; recalibrate as needed
+- Requires HTTPS (self-signed cert works after accepting warning)
+- Must enable "Motion & Orientation Access" in Safari settings
 
 Add your own via the **Locations panel** (bottom drawer).
 
@@ -109,9 +136,10 @@ Persisted to `localStorage` (survives reload).
 ## Requirements
 
 - **Android Chrome** (recommended) — full compass + GPS + camera support
+- **iOS Safari** — works with `webkitCompassHeading` (see Mobile section)
 - **Desktop Chrome** — UI testing only (mock GPS, no compass)
 - HTTPS required for camera/GPS/motion on mobile (use self-signed cert or ngrok)
-- Camera, Location, Motion & Orientation permissions
+- Permissions: see [Required Mobile Permissions](#required-mobile-permissions)
 
 ## Future Ideas
 
