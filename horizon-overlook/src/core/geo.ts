@@ -16,7 +16,7 @@ export interface Location extends GeoPoint {
   id: string;
   name: string;
   color: string;
-  type?: 'building' | 'landmark' | 'poi' | 'custom' | 'park' | 'mountain' | 'lake' | 'restaurant' | 'hotel' | 'airport' | 'station' | 'museum' | 'beach' | 'tower' | 'bridge';
+  type?: 'building' | 'landmark' | 'poi' | 'custom';
 }
 
 export interface BearingDistance {
