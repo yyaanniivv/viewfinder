@@ -279,7 +279,6 @@ input, select, button {
   border-top: 1px solid var(--border);
   border-radius: 16px 16px 0 0;
   max-height: 40vh;
-  overflow-y: auto;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   display: flex;
   flex-direction: column;
@@ -411,6 +410,9 @@ input, select, button {
 
 .panel-content {
   transition: opacity 0.2s ease;
+  flex: 1;
+  overflow-y: auto;
+  max-height: calc(40vh - 56px);
 }
 
 .panel-header {
