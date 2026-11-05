@@ -139,6 +139,7 @@ export const SAMPLE_LOCATIONS = [
     alt: 80,
     color: '#4ECDC4',
     type: 'landmark',
+    hidden: true,
   },
   {
     name: 'Sharonim Mall',
@@ -147,6 +148,7 @@ export const SAMPLE_LOCATIONS = [
     alt: 50,
     color: '#45B7D1',
     type: 'building',
+    hidden: true,
   },
   {
     name: 'Antipatris Fort',
@@ -155,6 +157,7 @@ export const SAMPLE_LOCATIONS = [
     alt: 70,
     color: '#FFBE0B',
     type: 'landmark',
+    hidden: true,
   },
   {
     name: 'Menivim Tower',
@@ -163,6 +166,7 @@ export const SAMPLE_LOCATIONS = [
     alt: 100,
     color: '#FB5607',
     type: 'building',
+    hidden: true,
   },
   {
     name: 'Migdal Tsedek',
