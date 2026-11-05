@@ -111,16 +111,13 @@
         <div class="setting-row">
           <label for="compass-rate">Update Rate (ms)</label>
           <div class="slider-container">
-            <input type="range" id="compass-rate" min="50" max="2000" step="50" value="100">
-            <span id="compass-rate-value">100ms</span>
+            <input type="range" id="compass-rate" min="50" max="2000" step="50" value="50">
+            <span id="compass-rate-value">50ms</span>
           </div>
         </div>
         <div class="setting-row">
           <label for="compass-zero-offset">Zero Offset (°)</label>
-          <div class="slider-container">
-            <input type="range" id="compass-zero-offset" min="0" max="360" step="1" value="0">
-            <span id="compass-zero-offset-value">0°</span>
-          </div>
+          <input type="number" id="compass-zero-offset-input" min="0" max="359" step="1" value="0" style="width: 80px; text-align: center;">
         </div>
         <div class="setting-row">
           <label>
@@ -272,7 +269,7 @@
     <!-- Locations Panel (top) -->
     <div id="locations-panel" class="panel" data-state="minimized">
       <div class="panel-header">
-        <h3>Locations (<span id="location-count">0</span>)</h3>
+        <h3>Locations (<span id="location-count">0/0</span>)</h3>
         <div class="panel-controls">
           <button id="minimize-locations-btn" class="control-btn" aria-label="Minimize locations panel" title="Minimize" style="display: none;">−</button>
           <button id="maximize-locations-btn" class="control-btn" aria-label="Maximize locations panel" title="Maximize">□</button>
@@ -328,7 +325,7 @@
     <div id="debug-pane" class="panel debug-pane" data-state="minimized">
       <div class="panel-header">
         <h3>Debug</h3>
-        <div class="panel-controls debug-controls">
+        <div class="panel-controls">
           <button id="minimize-debug-btn" class="control-btn" aria-label="Minimize debug pane" title="Minimize" style="display: none;">−</button>
           <button id="maximize-debug-btn" class="control-btn" aria-label="Maximize debug pane" title="Maximize">□</button>
           <button id="clear-debug-btn" class="control-btn" aria-label="Clear debug log" title="Clear">🗑</button>

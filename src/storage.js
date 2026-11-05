@@ -175,6 +175,7 @@ export const SAMPLE_LOCATIONS = [
     lon: 34.77893655386753,
     color: '#8338EC',
     type: 'landmark',
+    hidden: true,
   },
   {
     name: "Andromeda's Rock",
@@ -182,6 +183,7 @@ export const SAMPLE_LOCATIONS = [
     lon: 34.75081837867895,
     color: '#3A86FF',
     type: 'landmark',
+    hidden: true,
   },
   {
     name: 'Ariel Sharon Park',
@@ -189,6 +191,7 @@ export const SAMPLE_LOCATIONS = [
     lon: 34.821610185523795,
     color: '#06D6A0',
     type: 'park',
+    hidden: true,
   },
   {
     name: 'Surf Park Lagoona',
@@ -196,6 +199,7 @@ export const SAMPLE_LOCATIONS = [
     lon: 34.807756528580654,
     color: '#FF006E',
     type: 'park',
+    hidden: true,
   },
   {
     name: 'Kikar Levana',
@@ -203,6 +207,7 @@ export const SAMPLE_LOCATIONS = [
     lon: 34.805666539324704,
     color: '#8AC926',
     type: 'landmark',
+    hidden: true,
   },
   {
     name: 'Migdal Atidim',

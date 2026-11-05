@@ -33,7 +33,6 @@ const currentLocationUseGpsBtn = document.getElementById('current-location-use-g
 const currentLocationSetManualBtn = document.getElementById('current-location-set-manual-btn');
 const manualLat = document.getElementById('manual-lat');
 const manualLon = document.getElementById('manual-lon');
-const manualAlt = document.getElementById('manual-alt');
 const gpsLatEl = document.getElementById('gps-lat');
 const gpsLonEl = document.getElementById('gps-lon');
 const gpsAltEl = document.getElementById('gps-alt');
@@ -58,8 +57,7 @@ const cameraDefaultOnCheckbox = document.getElementById('camera-default-on');
 const compassInvertCheckbox = document.getElementById('compass-invert');
 const compassRateSlider = document.getElementById('compass-rate');
 const compassRateValue = document.getElementById('compass-rate-value');
-const compassZeroOffsetSlider = document.getElementById('compass-zero-offset');
-const compassZeroOffsetValue = document.getElementById('compass-zero-offset-value');
+const compassZeroOffsetInput = document.getElementById('compass-zero-offset-input');
 const compassAutoCalibrateCheckbox = document.getElementById('compass-auto-calibrate');
 // Level indicator
 const levelIndicatorToggle = document.getElementById('toggle-level-indicator');
@@ -493,10 +491,14 @@ async function init() {
     }
     debug(`Compass update rate: ${rate}ms`);
   });
-  compassZeroOffsetSlider?.addEventListener('input', (e) => {
-    const offset = parseInt(e.target.value);
+  compassZeroOffsetInput?.addEventListener('input', (e) => {
+    let offset = parseInt(e.target.value);
+    // Clamp to 0-359
+    if (isNaN(offset)) offset = 0;
+    if (offset < 0) offset = 0;
+    if (offset > 359) offset = 359;
+    e.target.value = offset;
     compassZeroOffset = offset;
-    compassZeroOffsetValue.textContent = `${offset}°`;
     localStorage.setItem('viewfinder:compassZeroOffset', offset);
     debug(`Compass zero offset: ${offset}°`);
   });
@@ -640,8 +642,7 @@ async function init() {
   if (compassZeroOffsetPref !== null) {
     const offset = parseInt(compassZeroOffsetPref);
     compassZeroOffset = offset;
-    compassZeroOffsetSlider.value = offset;
-    compassZeroOffsetValue.textContent = `${offset}°`;
+    if (compassZeroOffsetInput) compassZeroOffsetInput.value = offset;
     debug(`Loaded compass zero offset: ${offset}°`);
   }
 
@@ -699,7 +700,7 @@ async function init() {
     debug(`Loaded GPS rate: ${rateMs / 1000}s`);
   }
 
-  // GPS Status click-to-copy: copies "lat,lon,alt" to clipboard
+  // GPS Status click-to-copy: copies "lat,lon" to clipboard
   if (statusGPS) {
     statusGPS.style.cursor = 'pointer';
     statusGPS.title = 'Click to copy coordinates';
@@ -707,8 +708,7 @@ async function init() {
       if (userPosition) {
         const lat = userPosition.lat.toFixed(6);
         const lon = userPosition.lon.toFixed(6);
-        const alt = userPosition.alt !== undefined ? userPosition.alt.toFixed(1) : '0';
-        const coords = `${lat},${lon},${alt}`;
+        const coords = `${lat},${lon}`;
         navigator.clipboard.writeText(coords).then(() => {
           debug(`Copied to clipboard: ${coords}`);
           // Visual feedback
@@ -1151,7 +1151,6 @@ function setupCurrentLocationEvents() {
 function handleSetManualLocation() {
   const lat = parseFloat(manualLat.value);
   const lon = parseFloat(manualLon.value);
-  const alt = manualAlt.value ? parseFloat(manualAlt.value) : undefined;
 
   if (isNaN(lat) || isNaN(lon)) {
     alert('Please enter valid coordinates');
@@ -1159,9 +1158,9 @@ function handleSetManualLocation() {
   }
 
   // Override user position with manual entry
-  userPosition = { lat, lon, alt };
+  userPosition = { lat, lon };
   gpsAccuracy = 0; // Manual has no accuracy
-  debug(`Manual location set: ${lat.toFixed(6)}, ${lon.toFixed(6)}${alt !== undefined ? `, ${alt}m` : ''}`);
+  debug(`Manual location set: ${lat.toFixed(6)}, ${lon.toFixed(6)}`);
   updateStatus();
   updateCurrentLocationDisplay();
   hideCurrentLocationOverlay();
@@ -1170,7 +1169,9 @@ function handleSetManualLocation() {
 // Location List UI
 function updateLocationCount() {
   if (locationCountEl) {
-    locationCountEl.textContent = locations.length;
+    const visible = locations.filter(l => !l.hidden).length;
+    const total = locations.length;
+    locationCountEl.textContent = `${visible}/${total}`;
   }
 }
 
