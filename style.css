@@ -278,7 +278,7 @@ input, select, button {
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
   border-radius: 16px 16px 0 0;
-  max-height: 39.375vh;
+  max-height: 40vh;
   overflow-y: auto;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   display: flex;
@@ -346,7 +346,7 @@ input, select, button {
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
   border-radius: 0 0 16px 16px;
-  max-height: 19.6875vh;
+  max-height: 20vh;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   display: flex;
   flex-direction: column;
