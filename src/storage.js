@@ -195,5 +195,21 @@ export const SAMPLE_LOCATIONS = [
     alt: 50,
     color: '#06D6A0',
     type: 'park',
+  },
+  {
+    name: 'Surf Park Lagoona',
+    lat: 32.04203563698836,
+    lon: 34.807756528580654,
+    alt: 10,
+    color: '#FF006E',
+    type: 'park',
+  },
+  {
+    name: 'Kikar Levana',
+    lat: 32.059469318700486,
+    lon: 34.805666539324704,
+    alt: 40,
+    color: '#8AC926',
+    type: 'poi',
   }
 ];
