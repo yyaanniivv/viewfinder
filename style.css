@@ -305,7 +305,7 @@ input, select, button {
 }
 
 #locations-panel[data-state="minimized"] {
-  max-height: 56px;
+  max-height: 42px;
   border-radius: 16px 16px 0 0;
 }
 
@@ -323,6 +323,14 @@ input, select, button {
 
 #locations-panel[data-state="minimized"] #minimize-locations-btn {
   display: none !important;
+}
+
+#locations-panel[data-state="minimized"] .panel-header {
+  padding: 8px 16px;
+}
+
+#locations-panel[data-state="minimized"] .panel-header h3 {
+  font-size: 14px;
 }
 
 .panel-header h3 {
