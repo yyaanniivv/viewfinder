@@ -139,6 +139,7 @@ export const SAMPLE_LOCATIONS = [
     alt: 80,
     color: '#4ECDC4',
     type: 'landmark',
+    hidden: true,
   },
   {
     name: 'Sharonim Mall',
@@ -147,6 +148,7 @@ export const SAMPLE_LOCATIONS = [
     alt: 50,
     color: '#45B7D1',
     type: 'building',
+    hidden: true,
   },
   {
     name: 'Antipatris Fort',
@@ -155,6 +157,7 @@ export const SAMPLE_LOCATIONS = [
     alt: 70,
     color: '#FFBE0B',
     type: 'landmark',
+    hidden: true,
   },
   {
     name: 'Menivim Tower',
@@ -163,13 +166,62 @@ export const SAMPLE_LOCATIONS = [
     alt: 100,
     color: '#FB5607',
     type: 'building',
+    hidden: true,
   },
-    {
+  {
     name: 'Migdal Tsedek',
     lat: 32.0810141,
     lon: 34.9575718,
     alt: 250,
     color: '#FB5607',
+    type: 'building',
+  },
+  {
+    name: 'Reading Power Station',
+    lat: 32.10547791636009,
+    lon: 34.77893655386753,
+    alt: 30,
+    color: '#8338EC',
+    type: 'landmark',
+  },
+  {
+    name: "Andromeda's Rock",
+    lat: 32.05615249585027,
+    lon: 34.75081837867895,
+    alt: 10,
+    color: '#3A86FF',
+    type: 'landmark',
+  },
+  {
+    name: 'Ariel Sharon Park',
+    lat: 32.030747601022235,
+    lon: 34.821610185523795,
+    alt: 50,
+    color: '#06D6A0',
+    type: 'park',
+  },
+  {
+    name: 'Surf Park Lagoona',
+    lat: 32.04203563698836,
+    lon: 34.807756528580654,
+    alt: 10,
+    color: '#FF006E',
+    type: 'park',
+  },
+  {
+    name: 'Kikar Levana',
+    lat: 32.059469318700486,
+    lon: 34.805666539324704,
+    alt: 40,
+    color: '#8AC926',
+    type: 'landmark',
+  },
+  {
+    name: 'Migdal Atidim',
+    lat: 32.115486405472986,
+    lon: 34.84288194619571,
+    alt: 100,
+    color: '#FF6B6B',
     type: 'building',
   }
 ];
