@@ -365,25 +365,6 @@ input, select, button {
   display: none !important;
 }
 
-.debug-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.debug-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.debug-controls {
-  display: flex;
-  gap: 8px;
-}
-
 .control-btn {
   width: 28px;
   height: 28px;
