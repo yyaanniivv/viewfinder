@@ -4,7 +4,21 @@
  */
 
 import { Overlay } from './overlay.js';
-import { startCamera } from './camera.js';
+import {
+  startCamera,
+  stopCamera,
+  switchCamera,
+  cycleCamera,
+  setZoom,
+  getCurrentZoom,
+  getAvailableZoomLevels,
+  setAvailableZoomLevels,
+  cycleZoomLevel,
+  cycleZoomLevelBack,
+  setupPinchZoom,
+  getAvailableCameras,
+  DEFAULT_ZOOM_LEVELS
+} from './camera.js';
 import { startCompass } from './compass.js';
 import { startGPS } from './gps.js';
 
@@ -75,6 +89,19 @@ const gpsRateValue = document.getElementById('gps-rate-value');
 // Calibration overlay
 const calibrationOverlay = document.getElementById('calibration-overlay');
 
+// Zoom controls
+const zoomControls = document.getElementById('zoom-controls');
+const zoomIndicator = document.getElementById('zoom-indicator');
+const zoomInBtn = document.getElementById('zoom-in-btn');
+const zoomOutBtn = document.getElementById('zoom-out-btn');
+const zoomCycleBtn = document.getElementById('zoom-cycle-btn');
+// Lens switch button
+const lensSwitchBtn = document.getElementById('lens-switch-btn');
+// Zoom settings
+const zoomLevelsSelect = document.getElementById('zoom-levels');
+const zoomGestureEnabledCheckbox = document.getElementById('zoom-gesture-enabled');
+const zoomButtonsEnabledCheckbox = document.getElementById('zoom-buttons-enabled');
+
 // Compass dial interaction state
 let compassDialActive = false;
 let compassDialStartAngle = 0;
@@ -112,6 +139,11 @@ let levelTagEnabled = false; // Default OFF
 let laneModeEnabled = false; // Default OFF
 // Clean center wheel (only affects lane mode)
 let cleanWheelEnabled = true; // Default ON
+
+// Zoom state
+let availableZoomLevels = [...DEFAULT_ZOOM_LEVELS];
+let currentZoomLevel = 1;
+let pinchZoomCleanup = null; // Cleanup function for pinch zoom
 
 // Debug function (module scope so callbacks can use it)
 function debug(msg) {
@@ -853,7 +885,7 @@ async function toggleCamera() {
     // Turn camera ON
     try {
       debug('Starting camera...');
-      cameraStream = await startCamera(video);
+      cameraStream = await startCamera(video, { zoom: currentZoomLevel });
       video.style.display = 'block';
       cameraToggleBtn.textContent = '📷';
       cameraToggleBtn.classList.remove('off');
@@ -861,6 +893,11 @@ async function toggleCamera() {
       cameraEnabled = true;
       localStorage.setItem('viewfinder:cameraEnabled', true);
       debug('Camera started');
+
+      // Setup zoom controls
+      setupZoomControls();
+      // Setup lens switch button
+      setupLensSwitch();
     } catch (err) {
       debug('Camera error: ' + err.message);
       showError(`Camera: ${err.message}`);
@@ -878,6 +915,252 @@ async function toggleCamera() {
     cameraEnabled = false;
     localStorage.setItem('viewfinder:cameraEnabled', false);
     debug('Camera stopped');
+
+    // Cleanup zoom controls
+    cleanupZoomControls();
+    // Cleanup lens switch
+    cleanupLensSwitch();
+  }
+}
+
+/**
+ * Setup zoom controls (buttons, pinch gesture, etc.)
+ */
+function setupZoomControls() {
+  // Update available zoom levels from settings
+  const savedZoomLevels = localStorage.getItem('viewfinder:zoomLevels');
+  if (savedZoomLevels) {
+    const levels = savedZoomLevels.split(',').map(n => parseFloat(n)).filter(n => !isNaN(n));
+    if (levels.length > 0) {
+      availableZoomLevels = levels;
+      setAvailableZoomLevels(levels);
+    }
+  }
+
+  // Update zoom indicator
+  currentZoomLevel = getCurrentZoom();
+  updateZoomIndicator();
+
+  // Show/hide zoom controls based on settings
+  const zoomButtonsEnabled = localStorage.getItem('viewfinder:zoomButtonsEnabled') !== 'false';
+  if (zoomButtonsEnabled && zoomControls) {
+    zoomControls.style.display = 'flex';
+  }
+
+  // Setup zoom buttons
+  if (zoomInBtn) {
+    zoomInBtn.onclick = () => handleZoomIn();
+  }
+  if (zoomOutBtn) {
+    zoomOutBtn.onclick = () => handleZoomOut();
+  }
+  if (zoomCycleBtn) {
+    zoomCycleBtn.onclick = () => handleZoomCycle();
+  }
+
+  // Setup pinch-to-zoom gesture
+  const zoomGestureEnabled = localStorage.getItem('viewfinder:zoomGestureEnabled') !== 'false';
+  if (zoomGestureEnabled && video) {
+    pinchZoomCleanup = setupPinchZoom(video, (newZoom) => {
+      currentZoomLevel = newZoom;
+      updateZoomIndicator();
+      debug(`Pinch zoom: ${newZoom}×`);
+    });
+  }
+
+  // Setup zoom settings listeners
+  setupZoomSettings();
+}
+
+/**
+ * Cleanup zoom controls
+ */
+function cleanupZoomControls() {
+  if (zoomControls) {
+    zoomControls.style.display = 'none';
+  }
+  if (pinchZoomCleanup) {
+    pinchZoomCleanup();
+    pinchZoomCleanup = null;
+  }
+}
+
+/**
+ * Update zoom indicator display
+ */
+function updateZoomIndicator() {
+  if (zoomIndicator) {
+    zoomIndicator.textContent = `${currentZoomLevel}×`;
+  }
+}
+
+/**
+ * Handle zoom in button
+ */
+function handleZoomIn() {
+  if (!cameraStream || !video) return;
+
+  const idx = availableZoomLevels.indexOf(currentZoomLevel);
+  if (idx < availableZoomLevels.length - 1) {
+    const newZoom = availableZoomLevels[idx + 1];
+    applyZoom(newZoom);
+  }
+}
+
+/**
+ * Handle zoom out button
+ */
+function handleZoomOut() {
+  if (!cameraStream || !video) return;
+
+  const idx = availableZoomLevels.indexOf(currentZoomLevel);
+  if (idx > 0) {
+    const newZoom = availableZoomLevels[idx - 1];
+    applyZoom(newZoom);
+  }
+}
+
+/**
+ * Handle zoom cycle button
+ */
+function handleZoomCycle() {
+  if (!cameraStream || !video) return;
+
+  const newZoom = cycleZoomLevel();
+  applyZoom(newZoom);
+}
+
+/**
+ * Apply zoom level to camera
+ * @param {number} zoom - Zoom level to apply
+ */
+async function applyZoom(zoom) {
+  if (!cameraStream) return;
+
+  const track = cameraStream.getVideoTracks()[0];
+  if (!track) return;
+
+  try {
+    const success = await setZoom(track, zoom);
+    if (success) {
+      currentZoomLevel = zoom;
+      updateZoomIndicator();
+      debug(`Zoom changed to ${zoom}×`);
+    } else {
+      debug(`Failed to set zoom to ${zoom}×`);
+    }
+  } catch (err) {
+    debug(`Zoom error: ${err.message}`);
+  }
+}
+
+/**
+ * Setup zoom settings listeners
+ */
+function setupZoomSettings() {
+  // Zoom levels select
+  if (zoomLevelsSelect) {
+    // Set current value
+    zoomLevelsSelect.value = availableZoomLevels.join(',');
+
+    zoomLevelsSelect.addEventListener('change', (e) => {
+      const levels = e.target.value.split(',').map(n => parseFloat(n)).filter(n => !isNaN(n));
+      if (levels.length > 0) {
+        availableZoomLevels = levels;
+        setAvailableZoomLevels(levels);
+        localStorage.setItem('viewfinder:zoomLevels', levels.join(','));
+
+        // If current zoom is not in new levels, reset to first
+        if (!availableZoomLevels.includes(currentZoomLevel)) {
+          currentZoomLevel = availableZoomLevels[0];
+          applyZoom(currentZoomLevel);
+        }
+        updateZoomIndicator();
+        debug(`Zoom levels updated: ${levels.join(', ')}×`);
+      }
+    });
+  }
+
+  // Pinch gesture toggle
+  if (zoomGestureEnabledCheckbox) {
+    const saved = localStorage.getItem('viewfinder:zoomGestureEnabled');
+    zoomGestureEnabledCheckbox.checked = saved !== 'false';
+
+    zoomGestureEnabledCheckbox.addEventListener('change', (e) => {
+      const enabled = e.target.checked;
+      localStorage.setItem('viewfinder:zoomGestureEnabled', enabled);
+
+      if (enabled && video && cameraEnabled) {
+        pinchZoomCleanup = setupPinchZoom(video, (newZoom) => {
+          currentZoomLevel = newZoom;
+          updateZoomIndicator();
+          debug(`Pinch zoom: ${newZoom}×`);
+        });
+        debug('Pinch-to-zoom enabled');
+      } else if (!enabled && pinchZoomCleanup) {
+        pinchZoomCleanup();
+        pinchZoomCleanup = null;
+        debug('Pinch-to-zoom disabled');
+      }
+    });
+  }
+
+  // Zoom buttons toggle
+  if (zoomButtonsEnabledCheckbox) {
+    const saved = localStorage.getItem('viewfinder:zoomButtonsEnabled');
+    zoomButtonsEnabledCheckbox.checked = saved !== 'false';
+
+    zoomButtonsEnabledCheckbox.addEventListener('change', (e) => {
+      const enabled = e.target.checked;
+      localStorage.setItem('viewfinder:zoomButtonsEnabled', enabled);
+
+      if (zoomControls) {
+        zoomControls.style.display = enabled && cameraEnabled ? 'flex' : 'none';
+      }
+      debug(`Zoom buttons ${enabled ? 'shown' : 'hidden'}`);
+    });
+  }
+}
+
+/**
+ * Setup lens switch button
+ */
+async function setupLensSwitch() {
+  if (!lensSwitchBtn) return;
+
+  const devices = await getAvailableCameras();
+  if (devices.length <= 1) {
+    // Only one camera, hide the lens switch button
+    lensSwitchBtn.style.display = 'none';
+    return;
+  }
+
+  // Show lens switch button when camera is on
+  lensSwitchBtn.style.display = 'flex';
+
+  // Set up click handler
+  lensSwitchBtn.onclick = async () => {
+    if (!cameraStream || !cameraEnabled) return;
+
+    try {
+      debug('Switching camera lens...');
+      const result = await cycleCamera(video, cameraStream);
+      cameraStream = result.stream;
+      debug(`Switched to lens: ${result.label}`);
+    } catch (err) {
+      debug(`Lens switch error: ${err.message}`);
+      showError(`Failed to switch lens: ${err.message}`);
+    }
+  };
+}
+
+/**
+ * Cleanup lens switch button
+ */
+function cleanupLensSwitch() {
+  if (lensSwitchBtn) {
+    lensSwitchBtn.style.display = 'none';
+    lensSwitchBtn.onclick = null;
   }
 }
 
