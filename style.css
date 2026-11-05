@@ -231,24 +231,6 @@ input, select, button {
   cursor: pointer;
 }
 
-/* Slider container for range + number inputs */
-.slider-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.slider-container input[type="range"] {
-  flex: 1;
-}
-
-.slider-container input[type="number"] {
-  width: 60px;
-  text-align: center;
-  padding: 8px 4px;
-  font-family: ui-monospace, SFMono-Regular, monospace;
-}
-
 /* Version badge (top-right, click to open settings) */
 #version-badge {
   position: fixed;

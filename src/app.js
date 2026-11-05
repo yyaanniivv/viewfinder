@@ -58,9 +58,7 @@ const cameraDefaultOnCheckbox = document.getElementById('camera-default-on');
 const compassInvertCheckbox = document.getElementById('compass-invert');
 const compassRateSlider = document.getElementById('compass-rate');
 const compassRateValue = document.getElementById('compass-rate-value');
-const compassZeroOffsetSlider = document.getElementById('compass-zero-offset');
 const compassZeroOffsetInput = document.getElementById('compass-zero-offset-input');
-const compassZeroOffsetValue = document.getElementById('compass-zero-offset-value');
 const compassAutoCalibrateCheckbox = document.getElementById('compass-auto-calibrate');
 // Level indicator
 const levelIndicatorToggle = document.getElementById('toggle-level-indicator');
@@ -494,14 +492,6 @@ async function init() {
     }
     debug(`Compass update rate: ${rate}ms`);
   });
-  compassZeroOffsetSlider?.addEventListener('input', (e) => {
-    const offset = parseInt(e.target.value);
-    compassZeroOffset = offset;
-    compassZeroOffsetValue.textContent = `${offset}°`;
-    if (compassZeroOffsetInput) compassZeroOffsetInput.value = offset;
-    localStorage.setItem('viewfinder:compassZeroOffset', offset);
-    debug(`Compass zero offset: ${offset}°`);
-  });
   compassZeroOffsetInput?.addEventListener('input', (e) => {
     let offset = parseInt(e.target.value);
     // Clamp to 0-359
@@ -510,8 +500,6 @@ async function init() {
     if (offset > 359) offset = 359;
     e.target.value = offset;
     compassZeroOffset = offset;
-    compassZeroOffsetValue.textContent = `${offset}°`;
-    if (compassZeroOffsetSlider) compassZeroOffsetSlider.value = offset;
     localStorage.setItem('viewfinder:compassZeroOffset', offset);
     debug(`Compass zero offset: ${offset}°`);
   });
@@ -655,9 +643,7 @@ async function init() {
   if (compassZeroOffsetPref !== null) {
     const offset = parseInt(compassZeroOffsetPref);
     compassZeroOffset = offset;
-    compassZeroOffsetSlider.value = offset;
     if (compassZeroOffsetInput) compassZeroOffsetInput.value = offset;
-    compassZeroOffsetValue.textContent = `${offset}°`;
     debug(`Loaded compass zero offset: ${offset}°`);
   }
 
