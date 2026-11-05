@@ -48,6 +48,7 @@ const settingsCloseBtn = document.getElementById('settings-close-btn');
 const toggleLocationsPanel = document.getElementById('toggle-locations-panel');
 const toggleDebugPane = document.getElementById('toggle-debug-pane');
 const toggleCompass = document.getElementById('toggle-compass');
+const toggleCameraPanel = document.getElementById('toggle-camera-panel');
 const settingsVersion = document.getElementById('settings-version');
 const versionBadge = document.getElementById('version-badge');
 // Camera settings
@@ -436,6 +437,7 @@ async function init() {
     toggleLocationsPanel.checked = locationsPanel.style.display !== 'none';
     toggleDebugPane.checked = debugPane.style.display !== 'none';
     toggleCompass.checked = compassBtn.style.display !== 'none';
+    toggleCameraPanel.checked = cameraToggleBtn.style.display !== 'none';
   });
   settingsCloseBtn?.addEventListener('click', () => {
     settingsOverlay.style.display = 'none';
@@ -463,12 +465,20 @@ async function init() {
     compassBtn.style.display = e.target.checked ? 'flex' : 'none';
     localStorage.setItem('viewfinder:showCompass', e.target.checked);
   });
+  toggleCameraPanel?.addEventListener('change', (e) => {
+    cameraToggleBtn.style.display = e.target.checked ? 'flex' : 'none';
+    localStorage.setItem('viewfinder:showCameraPanel', e.target.checked);
+  });
 
   // Camera settings checkboxes
   cameraEnabledCheckbox?.addEventListener('change', (e) => {
     const enabled = e.target.checked;
     localStorage.setItem('viewfinder:cameraEnabled', enabled);
-    if (!enabled && cameraEnabled) {
+    if (enabled && !cameraEnabled) {
+      // Turn camera on
+      toggleCamera();
+    } else if (!enabled && cameraEnabled) {
+      // Turn camera off
       toggleCamera();
     }
   });
@@ -594,17 +604,36 @@ async function init() {
     toggleCompass.checked = true;
   }
 
+  // Load camera panel visibility preference
+  const showCameraPanel = localStorage.getItem('viewfinder:showCameraPanel');
+  if (showCameraPanel !== null) {
+    const show = showCameraPanel === 'true';
+    cameraToggleBtn.style.display = show ? 'flex' : 'none';
+    toggleCameraPanel.checked = show;
+  } else {
+    // Default: ON
+    cameraToggleBtn.style.display = 'flex';
+    toggleCameraPanel.checked = true;
+  }
+
   // Load saved camera preferences
   const cameraEnabledPref = localStorage.getItem('viewfinder:cameraEnabled');
   if (cameraEnabledPref !== null) {
     const enabled = cameraEnabledPref === 'true';
     cameraEnabledCheckbox.checked = enabled;
+    // Initialize cameraEnabled state from preference
+    cameraEnabled = enabled;
+    // If camera was previously enabled, start it now
+    if (enabled) {
+      toggleCamera();
+    }
   }
   const cameraDefaultOnPref = localStorage.getItem('viewfinder:cameraDefaultOn');
   if (cameraDefaultOnPref !== null) {
     const defaultOn = cameraDefaultOnPref === 'true';
     cameraDefaultOnCheckbox.checked = defaultOn;
-    if (defaultOn) {
+    // Only auto-start if camera wasn't already started above (cameraEnabled handles persistence)
+    if (defaultOn && !cameraEnabled) {
       // Auto-start camera if default is on
       toggleCamera();
     }
