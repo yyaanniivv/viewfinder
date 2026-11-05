@@ -180,4 +180,28 @@ export const SAMPLE_LOCATIONS: Omit<Location, 'id'>[] = [
     color: '#FB5607',
     type: 'building',
   },
+  {
+    name: 'Reading Power Station',
+    lat: 32.10547791636009,
+    lon: 34.77893655386753,
+    alt: 30,
+    color: '#8338EC',
+    type: 'landmark',
+  },
+  {
+    name: "Andromeda's Rock",
+    lat: 32.05615249585027,
+    lon: 34.75081837867895,
+    alt: 10,
+    color: '#3A86FF',
+    type: 'landmark',
+  },
+  {
+    name: 'Ariel Sharon Park',
+    lat: 32.030747601022235,
+    lon: 34.821610185523795,
+    alt: 50,
+    color: '#06D6A0',
+    type: 'park',
+  },
 ];
