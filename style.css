@@ -325,27 +325,31 @@ input, select, button {
   display: none !important;
 }
 
-#locations-panel[data-state="minimized"] .panel-header {
+.panel[data-state="minimized"] {
+  max-height: 42px;
+}
+
+.panel[data-state="minimized"] .panel-content {
+  display: none;
+}
+
+.panel[data-state="minimized"] .add-btn {
+  display: none;
+}
+
+.panel[data-state="minimized"] .panel-header {
   padding: 8px 16px;
 }
 
-#locations-panel[data-state="minimized"] .panel-header h3 {
+.panel[data-state="minimized"] .panel-header h3 {
   font-size: 14px;
 }
 
-#locations-panel[data-state="maximized"] .panel-header {
+.panel[data-state="maximized"] .panel-header {
   padding: 12px 16px;
 }
 
-#locations-panel[data-state="maximized"] .panel-header h3 {
-  font-size: 16px;
-}
-
-.debug-pane[data-state="maximized"] .debug-header {
-  padding: 12px 16px;
-}
-
-.debug-pane[data-state="maximized"] .debug-header h3 {
+.panel[data-state="maximized"] .panel-header h3 {
   font-size: 16px;
 }
 
@@ -368,12 +372,7 @@ input, select, button {
 }
 
 .debug-pane[data-state="minimized"] {
-  max-height: 42px;
   border-radius: 0 0 16px 16px;
-}
-
-.debug-pane[data-state="minimized"] .debug-content {
-  display: none;
 }
 
 .debug-pane[data-state="minimized"] #maximize-debug-btn {
@@ -382,22 +381,6 @@ input, select, button {
 
 .debug-pane[data-state="minimized"] #minimize-debug-btn {
   display: none !important;
-}
-
-.debug-pane[data-state="minimized"] .debug-header {
-  padding: 8px 16px;
-}
-
-.debug-pane[data-state="minimized"] .debug-header h3 {
-  font-size: 14px;
-}
-
-.debug-pane[data-state="maximized"] .debug-header {
-  padding: 12px 16px;
-}
-
-.debug-pane[data-state="maximized"] .debug-header h3 {
-  font-size: 16px;
 }
 
 .debug-header {
