@@ -160,6 +160,79 @@ input, select, button {
   border-color: rgba(255, 107, 107, 0.5);
 }
 
+/* Zoom controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px 10px;
+  margin-right: 8px;
+}
+
+.zoom-btn {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 18px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  transition: background 0.15s;
+}
+
+.zoom-btn:active {
+  background: rgba(255,255,255,0.2);
+}
+
+.zoom-btn.zoom-cycle {
+  font-size: 14px;
+  margin-left: 4px;
+  padding: 4px 6px;
+}
+
+.zoom-indicator {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  min-width: 40px;
+  text-align: center;
+  padding: 0 4px;
+}
+
+/* Lens switch button */
+.lens-switch-btn {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.lens-switch-btn:active {
+  transform: scale(0.95);
+}
+
+.lens-switch-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
 /* Bearing display */
 .bearing-display {
   display: flex;

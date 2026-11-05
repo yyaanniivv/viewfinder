@@ -38,6 +38,19 @@
       <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
     </div>
 
+    <!-- Zoom indicator and controls -->
+    <div id="zoom-controls" class="zoom-controls" style="display: none;">
+      <button id="zoom-out-btn" class="zoom-btn" aria-label="Zoom out" title="Zoom out">−</button>
+      <span id="zoom-indicator" class="zoom-indicator">1×</span>
+      <button id="zoom-in-btn" class="zoom-btn" aria-label="Zoom in" title="Zoom in">+</button>
+      <button id="zoom-cycle-btn" class="zoom-btn zoom-cycle" aria-label="Cycle zoom levels" title="Cycle zoom (1×, 2×, 5×, 10×)">↻</button>
+    </div>
+
+    <!-- Camera/Lens switcher -->
+    <button id="lens-switch-btn" class="lens-switch-btn" style="display: none;" aria-label="Switch camera lens" title="Switch lens">
+      🔄
+    </button>
+
     <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
       📷
     </button>
@@ -91,6 +104,27 @@
           <label>
             <input type="checkbox" id="camera-default-on">
             <span>Start Camera Automatically</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label for="zoom-levels">Zoom Levels</label>
+          <select id="zoom-levels" style="width: 180px;">
+            <option value="1,2,5,10">1×, 2×, 5×, 10×</option>
+            <option value="1,2,3,4,5">1×–5×</option>
+            <option value="1,1.5,2,3,5">1×, 1.5×, 2×, 3×, 5×</option>
+            <option value="1,2,4,8,10">1×, 2×, 4×, 8×, 10×</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="zoom-gesture-enabled" checked>
+            <span>Pinch to Zoom</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="zoom-buttons-enabled" checked>
+            <span>Show Zoom Buttons (+/−/Cycle)</span>
           </label>
         </div>
       </div>
