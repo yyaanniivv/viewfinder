@@ -214,7 +214,7 @@ export const SAMPLE_LOCATIONS = [
     lon: 34.805666539324704,
     alt: 40,
     color: '#8AC926',
-    type: 'poi',
+    type: 'landmark',
   },
   {
     name: 'Migdal Atidim',
