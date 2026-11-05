@@ -223,5 +223,13 @@ export const SAMPLE_LOCATIONS = [
     alt: 100,
     color: '#FF6B6B',
     type: 'building',
+  },
+  {
+    name: 'BIG Fashion',
+    lat: 32.14868551856639,
+    lon: 34.80560336797036,
+    alt: 50,
+    color: '#4ECDC4',
+    type: 'building',
   }
 ];
