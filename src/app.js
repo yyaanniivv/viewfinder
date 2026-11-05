@@ -33,7 +33,6 @@ const currentLocationUseGpsBtn = document.getElementById('current-location-use-g
 const currentLocationSetManualBtn = document.getElementById('current-location-set-manual-btn');
 const manualLat = document.getElementById('manual-lat');
 const manualLon = document.getElementById('manual-lon');
-const manualAlt = document.getElementById('manual-alt');
 const gpsLatEl = document.getElementById('gps-lat');
 const gpsLonEl = document.getElementById('gps-lon');
 const gpsAltEl = document.getElementById('gps-alt');
@@ -701,7 +700,7 @@ async function init() {
     debug(`Loaded GPS rate: ${rateMs / 1000}s`);
   }
 
-  // GPS Status click-to-copy: copies "lat,lon,alt" to clipboard
+  // GPS Status click-to-copy: copies "lat,lon" to clipboard
   if (statusGPS) {
     statusGPS.style.cursor = 'pointer';
     statusGPS.title = 'Click to copy coordinates';
@@ -709,8 +708,7 @@ async function init() {
       if (userPosition) {
         const lat = userPosition.lat.toFixed(6);
         const lon = userPosition.lon.toFixed(6);
-        const alt = userPosition.alt !== undefined ? userPosition.alt.toFixed(1) : '0';
-        const coords = `${lat},${lon},${alt}`;
+        const coords = `${lat},${lon}`;
         navigator.clipboard.writeText(coords).then(() => {
           debug(`Copied to clipboard: ${coords}`);
           // Visual feedback
@@ -1153,7 +1151,6 @@ function setupCurrentLocationEvents() {
 function handleSetManualLocation() {
   const lat = parseFloat(manualLat.value);
   const lon = parseFloat(manualLon.value);
-  const alt = manualAlt.value ? parseFloat(manualAlt.value) : undefined;
 
   if (isNaN(lat) || isNaN(lon)) {
     alert('Please enter valid coordinates');
@@ -1161,9 +1158,9 @@ function handleSetManualLocation() {
   }
 
   // Override user position with manual entry
-  userPosition = { lat, lon, alt };
+  userPosition = { lat, lon };
   gpsAccuracy = 0; // Manual has no accuracy
-  debug(`Manual location set: ${lat.toFixed(6)}, ${lon.toFixed(6)}${alt !== undefined ? `, ${alt}m` : ''}`);
+  debug(`Manual location set: ${lat.toFixed(6)}, ${lon.toFixed(6)}`);
   updateStatus();
   updateCurrentLocationDisplay();
   hideCurrentLocationOverlay();
