@@ -1186,7 +1186,9 @@ function handleSetManualLocation() {
 // Location List UI
 function updateLocationCount() {
   if (locationCountEl) {
-    locationCountEl.textContent = locations.length;
+    const visible = locations.filter(l => !l.hidden).length;
+    const total = locations.length;
+    locationCountEl.textContent = `${visible}/${total}`;
   }
 }
 

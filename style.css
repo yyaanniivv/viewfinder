@@ -296,7 +296,7 @@ input, select, button {
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
   border-radius: 16px 16px 0 0;
-  max-height: 70vh;
+  max-height: 52.5vh;
   overflow-y: auto;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   display: flex;
