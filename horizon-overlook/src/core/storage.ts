@@ -220,4 +220,12 @@ export const SAMPLE_LOCATIONS: Omit<Location, 'id'>[] = [
     color: '#8AC926',
     type: 'poi',
   },
+  {
+    name: 'Migdal Atidim',
+    lat: 32.115486405472986,
+    lon: 34.84288194619571,
+    alt: 100,
+    color: '#FF6B6B',
+    type: 'building',
+  },
 ];
