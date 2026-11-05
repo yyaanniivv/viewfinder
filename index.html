@@ -220,10 +220,6 @@
             <input type="number" step="0.000001" id="manual-lon" placeholder="34.784437">
           </div>
         </div>
-        <div class="manual-field">
-          <label>Altitude (m)</label>
-          <input type="number" id="manual-alt" placeholder="Optional">
-        </div>
       </div>
 
       <div class="picker-actions">
@@ -302,20 +298,14 @@
                 <input type="number" step="any" id="loc-lon" placeholder="34.784437" required>
               </div>
             </div>
-            <div class="field-row">
-              <div class="field">
-                <label>Altitude (m)</label>
-                <input type="number" id="loc-alt" placeholder="Optional">
-              </div>
-              <div class="field">
-                <label>Type</label>
-                <select id="loc-type">
-                  <option value="building">Building</option>
-                  <option value="landmark">Landmark</option>
-                  <option value="poi">Point of Interest</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </div>
+            <div class="field">
+              <label>Type</label>
+              <select id="loc-type">
+                <option value="building">Building</option>
+                <option value="landmark">Landmark</option>
+                <option value="poi">Point of Interest</option>
+                <option value="custom">Custom</option>
+              </select>
             </div>
             <div class="field">
               <label>Color</label>

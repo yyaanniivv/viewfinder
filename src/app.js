@@ -1205,7 +1205,6 @@ function renderEyeList(list) {
           <span class="location-meta">
             ${loc.type ? `<span class="type-emoji">${getTypeEmoji(loc.type)}</span>` : ''}
             ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}
-            ${loc.alt !== undefined ? ` • ${loc.alt}m` : ''}
           </span>
         </div>
       </div>
@@ -1283,7 +1282,6 @@ function editLocation(id) {
   document.getElementById('loc-name').value = loc.name;
   document.getElementById('loc-lat').value = loc.lat;
   document.getElementById('loc-lon').value = loc.lon;
-  document.getElementById('loc-alt').value = loc.alt || '';
   document.getElementById('loc-type').value = loc.type || 'custom';
 
   showLocationForm();
@@ -1368,7 +1366,6 @@ function setupLocationForm() {
 
     const lat = parseFloat(document.getElementById('loc-lat').value);
     const lon = parseFloat(document.getElementById('loc-lon').value);
-    const alt = document.getElementById('loc-alt').value ? parseFloat(document.getElementById('loc-alt').value) : undefined;
 
     if (isNaN(lat) || isNaN(lon)) {
       alert('Invalid coordinates');
@@ -1385,7 +1382,6 @@ function setupLocationForm() {
       name: document.getElementById('loc-name').value.trim(),
       lat,
       lon,
-      alt,
       color,
       type: document.getElementById('loc-type').value,
     };

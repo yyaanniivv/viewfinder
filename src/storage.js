@@ -96,7 +96,6 @@ function isValidLocation(obj) {
     typeof l.lat === 'number' &&
     typeof l.lon === 'number' &&
     typeof l.color === 'string' &&
-    (l.alt === undefined || typeof l.alt === 'number') &&
     (l.type === undefined || typeof l.type === 'string')
   );
 }
@@ -128,7 +127,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'TelAviv ToHa2',
     lat: 32.0724238,
     lon: 34.7962598,
-    alt: 150,
     color: '#FF6B6B',
     type: 'building',
   },
@@ -136,7 +134,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'KFS Water Tower',
     lat: 32.184258,
     lon: 34.9103777,
-    alt: 80,
     color: '#4ECDC4',
     type: 'landmark',
     hidden: true,
@@ -145,7 +142,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'Sharonim Mall',
     lat: 32.132263,
     lon: 34.903191,
-    alt: 50,
     color: '#45B7D1',
     type: 'building',
     hidden: true,
@@ -154,7 +150,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'Antipatris Fort',
     lat: 32.105094,
     lon: 34.9304287,
-    alt: 70,
     color: '#FFBE0B',
     type: 'landmark',
     hidden: true,
@@ -163,7 +158,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'Menivim Tower',
     lat: 32.173583501562206,
     lon: 34.891439377458674,
-    alt: 100,
     color: '#FB5607',
     type: 'building',
     hidden: true,
@@ -172,7 +166,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'Migdal Tsedek',
     lat: 32.0810141,
     lon: 34.9575718,
-    alt: 250,
     color: '#FB5607',
     type: 'building',
   },
@@ -180,7 +173,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'Reading Power Station',
     lat: 32.10547791636009,
     lon: 34.77893655386753,
-    alt: 30,
     color: '#8338EC',
     type: 'landmark',
   },
@@ -188,7 +180,6 @@ export const SAMPLE_LOCATIONS = [
     name: "Andromeda's Rock",
     lat: 32.05615249585027,
     lon: 34.75081837867895,
-    alt: 10,
     color: '#3A86FF',
     type: 'landmark',
   },
@@ -196,7 +187,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'Ariel Sharon Park',
     lat: 32.030747601022235,
     lon: 34.821610185523795,
-    alt: 50,
     color: '#06D6A0',
     type: 'park',
   },
@@ -204,7 +194,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'Surf Park Lagoona',
     lat: 32.04203563698836,
     lon: 34.807756528580654,
-    alt: 10,
     color: '#FF006E',
     type: 'park',
   },
@@ -212,7 +201,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'Kikar Levana',
     lat: 32.059469318700486,
     lon: 34.805666539324704,
-    alt: 40,
     color: '#8AC926',
     type: 'landmark',
   },
@@ -220,7 +208,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'Migdal Atidim',
     lat: 32.115486405472986,
     lon: 34.84288194619571,
-    alt: 100,
     color: '#FF6B6B',
     type: 'building',
   },
@@ -228,7 +215,6 @@ export const SAMPLE_LOCATIONS = [
     name: 'BIG Fashion',
     lat: 32.14868551856639,
     lon: 34.80560336797036,
-    alt: 50,
     color: '#4ECDC4',
     type: 'building',
   }
