@@ -351,7 +351,10 @@ async function init() {
   setupCurrentLocationEvents();
 
   // Camera toggle
-  cameraToggleBtn?.addEventListener('click', toggleCamera);
+  cameraToggleBtn?.addEventListener('click', () => {
+    toggleCamera();
+    cameraEnabledCheckbox.checked = cameraEnabled;
+  });
 
   // Compass dial interaction (rotate to adjust heading offset)
   if (compassCanvas) {
@@ -438,6 +441,7 @@ async function init() {
     toggleDebugPane.checked = debugPane.style.display !== 'none';
     toggleCompass.checked = compassBtn.style.display !== 'none';
     toggleCameraPanel.checked = cameraToggleBtn.style.display !== 'none';
+    cameraEnabledCheckbox.checked = cameraEnabled; // Sync Camera Active checkbox
   });
   settingsCloseBtn?.addEventListener('click', () => {
     settingsOverlay.style.display = 'none';
