@@ -59,6 +59,7 @@ const compassInvertCheckbox = document.getElementById('compass-invert');
 const compassRateSlider = document.getElementById('compass-rate');
 const compassRateValue = document.getElementById('compass-rate-value');
 const compassZeroOffsetSlider = document.getElementById('compass-zero-offset');
+const compassZeroOffsetInput = document.getElementById('compass-zero-offset-input');
 const compassZeroOffsetValue = document.getElementById('compass-zero-offset-value');
 const compassAutoCalibrateCheckbox = document.getElementById('compass-auto-calibrate');
 // Level indicator
@@ -497,6 +498,20 @@ async function init() {
     const offset = parseInt(e.target.value);
     compassZeroOffset = offset;
     compassZeroOffsetValue.textContent = `${offset}°`;
+    if (compassZeroOffsetInput) compassZeroOffsetInput.value = offset;
+    localStorage.setItem('viewfinder:compassZeroOffset', offset);
+    debug(`Compass zero offset: ${offset}°`);
+  });
+  compassZeroOffsetInput?.addEventListener('input', (e) => {
+    let offset = parseInt(e.target.value);
+    // Clamp to 0-359
+    if (isNaN(offset)) offset = 0;
+    if (offset < 0) offset = 0;
+    if (offset > 359) offset = 359;
+    e.target.value = offset;
+    compassZeroOffset = offset;
+    compassZeroOffsetValue.textContent = `${offset}°`;
+    if (compassZeroOffsetSlider) compassZeroOffsetSlider.value = offset;
     localStorage.setItem('viewfinder:compassZeroOffset', offset);
     debug(`Compass zero offset: ${offset}°`);
   });
@@ -641,6 +656,7 @@ async function init() {
     const offset = parseInt(compassZeroOffsetPref);
     compassZeroOffset = offset;
     compassZeroOffsetSlider.value = offset;
+    if (compassZeroOffsetInput) compassZeroOffsetInput.value = offset;
     compassZeroOffsetValue.textContent = `${offset}°`;
     debug(`Loaded compass zero offset: ${offset}°`);
   }
