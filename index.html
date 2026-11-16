@@ -47,26 +47,28 @@
 
       <!-- BOTTOM BAR: Camera related controls (overlay on camera) -->
       <div class="bottom-bar">
-        <!-- Camera controls row (lens switch + zoom indicator) -->
+        <!-- Camera controls row (lens switch | shutter | zoom indicator) -->
         <div class="camera-controls-row">
           <!-- Camera/Lens switcher (left) -->
           <button id="lens-switch-btn" class="lens-switch-btn camera-side-btn" style="display: none;" aria-label="Switch camera lens" title="Switch lens">
             📷↔️
           </button>
 
-          <!-- Spacer for shutter button centering -->
-          <div class="shutter-spacer"></div>
+          <!-- Camera toggle button - center (shutter) -->
+          <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
+            📷
+          </button>
+
+          <!-- Zoom indicator (click to cycle) - right -->
+          <div id="zoom-controls" class="zoom-controls camera-side-btn" style="display: none;">
+            <button id="zoom-indicator" class="zoom-indicator" aria-label="Cycle zoom levels" title="Tap to cycle zoom (1×, 2×, 5×, 10×)">1×</button>
+          </div>
         </div>
 
         <!-- Zoom dial (iOS-style drag to zoom) - above shutter -->
         <div id="zoom-dial" class="zoom-dial" style="display: none;">
           <canvas id="zoom-dial-canvas" width="200" height="80"></canvas>
         </div>
-
-        <!-- Camera toggle button - bottom center (shutter) -->
-        <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
-          📷
-        </button>
       </div>
     </div>
 

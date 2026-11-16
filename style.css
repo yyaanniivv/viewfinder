@@ -253,7 +253,7 @@ input, select, button {
   background: rgba(255,255,255,0.15);
 }
 
-/* Camera controls row - lens switch + zoom indicator */
+/* Camera controls row - lens switch | shutter | zoom indicator */
 .camera-controls-row {
   display: flex;
   align-items: center;
@@ -271,13 +271,7 @@ input, select, button {
   justify-content: center;
 }
 
-/* Spacer to center shutter button */
-.shutter-spacer {
-  flex: 1 1 auto;
-  min-width: 72px; /* Same as shutter button */
-}
-
-/* Camera toggle button - bottom center (shutter style) */
+/* Camera toggle button - center (shutter style) */
 .camera-toggle-btn {
   width: 72px;
   height: 72px;
