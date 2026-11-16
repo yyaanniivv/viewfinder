@@ -274,6 +274,24 @@ input, select, button {
   pointer-events: auto;
 }
 
+/* Camera controls row - shutter centered with side buttons */
+.camera-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Side buttons (lens switch, zoom indicator) */
+.camera-side-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Camera toggle button - bottom center (shutter style) */
 .camera-toggle-btn {
   width: 72px;
@@ -287,6 +305,7 @@ input, select, button {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   transition: transform 0.1s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
@@ -305,7 +324,30 @@ input, select, button {
   box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 4px rgba(78, 205, 196, 0.3);
 }
 
-/* Zoom controls - above camera button */
+/* Lens switch button - in camera controls */
+.lens-switch-btn {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.lens-switch-btn:active {
+  transform: scale(0.95);
+}
+
+.lens-switch-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+/* Zoom controls - side of camera button */
 .zoom-controls {
   display: flex;
   align-items: center;
@@ -449,10 +491,10 @@ input, select, button {
 }
 
 /* Bottom panel container - stacked vertically (locations on top, debug below) */
-/* Positioned above the camera controls (lens switch ~40px + zoom indicator ~40px + zoom dial ~80px + camera button 72px + gaps 32px + margin 16px) */
+/* Positioned above camera controls (controls row ~72px + gap 8px + zoom dial 80px + margin 16px) */
 #bottom-panels {
   position: fixed;
-  bottom: calc(40px + 40px + 80px + 72px + 32px + 16px + env(safe-area-inset-bottom));
+  bottom: calc(72px + 8px + 80px + 16px + env(safe-area-inset-bottom));
   left: 0;
   right: 0;
   display: flex;

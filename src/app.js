@@ -101,6 +101,7 @@ const zoomLevelsSelect = document.getElementById('zoom-levels');
 const zoomGestureEnabledCheckbox = document.getElementById('zoom-gesture-enabled');
 const zoomButtonsEnabledCheckbox = document.getElementById('zoom-buttons-enabled');
 const zoomDialEnabledCheckbox = document.getElementById('zoom-dial-enabled');
+const zoomCycleEnabledCheckbox = document.getElementById('zoom-cycle-enabled');
 
 // Compass dial interaction state
 let compassDialActive = false;
@@ -932,9 +933,14 @@ function setupZoomControls() {
     zoomControls.style.display = 'flex';
   }
 
-  // Setup zoom indicator click to cycle
-  if (zoomIndicator) {
+  // Setup zoom indicator click to cycle (controlled by zoomCycleEnabled setting)
+  const zoomCycleEnabled = localStorage.getItem('viewfinder:zoomCycleEnabled') !== 'false';
+  if (zoomCycleEnabled && zoomIndicator) {
     zoomIndicator.onclick = () => handleZoomCycle();
+    zoomIndicator.style.cursor = 'pointer';
+  } else if (zoomIndicator) {
+    zoomIndicator.onclick = null;
+    zoomIndicator.style.cursor = 'default';
   }
 
   // Setup zoom dial
@@ -1115,6 +1121,28 @@ function setupZoomSettings() {
         zoomDialCleanup = null;
         debug('Zoom dial disabled');
       }
+    });
+  }
+
+  // Zoom cycle toggle (tap indicator to cycle)
+  if (zoomCycleEnabledCheckbox) {
+    const saved = localStorage.getItem('viewfinder:zoomCycleEnabled');
+    zoomCycleEnabledCheckbox.checked = saved !== 'false';
+
+    zoomCycleEnabledCheckbox.addEventListener('change', (e) => {
+      const enabled = e.target.checked;
+      localStorage.setItem('viewfinder:zoomCycleEnabled', enabled);
+
+      if (zoomIndicator) {
+        if (enabled) {
+          zoomIndicator.onclick = () => handleZoomCycle();
+          zoomIndicator.style.cursor = 'pointer';
+        } else {
+          zoomIndicator.onclick = null;
+          zoomIndicator.style.cursor = 'default';
+        }
+      }
+      debug(`Zoom cycle ${enabled ? 'enabled' : 'disabled'}`);
     });
   }
 }

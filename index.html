@@ -41,25 +41,27 @@
 
   <!-- Camera controls - bottom center (above panels) -->
   <div class="camera-controls">
-    <!-- Camera/Lens switcher (left) -->
-    <button id="lens-switch-btn" class="lens-switch-btn" style="display: none;" aria-label="Switch camera lens" title="Switch lens">
-      📷↔️
-    </button>
+    <div class="camera-controls-row">
+      <!-- Camera/Lens switcher (left of shutter) -->
+      <button id="lens-switch-btn" class="lens-switch-btn camera-side-btn" style="display: none;" aria-label="Switch camera lens" title="Switch lens">
+        📷↔️
+      </button>
 
-    <!-- Zoom indicator (click to cycle) - center -->
-    <div id="zoom-controls" class="zoom-controls" style="display: none;">
-      <button id="zoom-indicator" class="zoom-indicator" aria-label="Cycle zoom levels" title="Tap to cycle zoom (1×, 2×, 5×, 10×)">1×</button>
+      <!-- Camera toggle button - bottom center (like camera app shutter) -->
+      <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
+        📷
+      </button>
+
+      <!-- Zoom indicator (click to cycle) - right of shutter -->
+      <div id="zoom-controls" class="zoom-controls camera-side-btn" style="display: none;">
+        <button id="zoom-indicator" class="zoom-indicator" aria-label="Cycle zoom levels" title="Tap to cycle zoom (1×, 2×, 5×, 10×)">1×</button>
+      </div>
     </div>
 
-    <!-- Zoom dial (iOS-style drag to zoom) - center, below zoom indicator -->
+    <!-- Zoom dial (iOS-style drag to zoom) - below row, centered -->
     <div id="zoom-dial" class="zoom-dial" style="display: none;">
       <canvas id="zoom-dial-canvas" width="200" height="80"></canvas>
     </div>
-
-    <!-- Camera toggle button - bottom center (like camera app shutter) -->
-    <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
-      📷
-    </button>
   </div>
 
   <!-- Settings Overlay -->
@@ -131,6 +133,12 @@
           <label>
             <input type="checkbox" id="zoom-dial-enabled" checked>
             <span>Show Zoom Dial (drag to zoom)</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="zoom-cycle-enabled" checked>
+            <span>Show Cycle Button (tap indicator to cycle)</span>
           </label>
         </div>
       </div>
