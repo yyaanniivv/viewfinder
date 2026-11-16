@@ -91,9 +91,6 @@ const calibrationOverlay = document.getElementById('calibration-overlay');
 // Zoom controls
 const zoomControls = document.getElementById('zoom-controls');
 const zoomIndicator = document.getElementById('zoom-indicator');
-const zoomInBtn = document.getElementById('zoom-in-btn');
-const zoomOutBtn = document.getElementById('zoom-out-btn');
-const zoomCycleBtn = document.getElementById('zoom-cycle-btn');
 // Lens switch button
 const lensSwitchBtn = document.getElementById('lens-switch-btn');
 // Zoom settings
@@ -930,15 +927,9 @@ function setupZoomControls() {
     zoomControls.style.display = 'flex';
   }
 
-  // Setup zoom buttons
-  if (zoomInBtn) {
-    zoomInBtn.onclick = () => handleZoomIn();
-  }
-  if (zoomOutBtn) {
-    zoomOutBtn.onclick = () => handleZoomOut();
-  }
-  if (zoomCycleBtn) {
-    zoomCycleBtn.onclick = () => handleZoomCycle();
+  // Setup zoom indicator click to cycle
+  if (zoomIndicator) {
+    zoomIndicator.onclick = () => handleZoomCycle();
   }
 
   // Setup pinch-to-zoom gesture
@@ -978,33 +969,7 @@ function updateZoomIndicator() {
 }
 
 /**
- * Handle zoom in button
- */
-function handleZoomIn() {
-  if (!cameraStream || !video) return;
-
-  const idx = availableZoomLevels.indexOf(currentZoomLevel);
-  if (idx < availableZoomLevels.length - 1) {
-    const newZoom = availableZoomLevels[idx + 1];
-    applyZoom(newZoom);
-  }
-}
-
-/**
- * Handle zoom out button
- */
-function handleZoomOut() {
-  if (!cameraStream || !video) return;
-
-  const idx = availableZoomLevels.indexOf(currentZoomLevel);
-  if (idx > 0) {
-    const newZoom = availableZoomLevels[idx - 1];
-    applyZoom(newZoom);
-  }
-}
-
-/**
- * Handle zoom cycle button
+ * Handle zoom cycle (tap zoom indicator)
  */
 function handleZoomCycle() {
   if (!cameraStream || !video) return;

@@ -43,12 +43,9 @@
       📷↔️
     </button>
 
-    <!-- Zoom indicator and controls -->
+    <!-- Zoom indicator (click to cycle) -->
     <div id="zoom-controls" class="zoom-controls" style="display: none;">
-      <button id="zoom-out-btn" class="zoom-btn" aria-label="Zoom out" title="Zoom out">−</button>
-      <span id="zoom-indicator" class="zoom-indicator">1×</span>
-      <button id="zoom-in-btn" class="zoom-btn" aria-label="Zoom in" title="Zoom in">+</button>
-      <button id="zoom-cycle-btn" class="zoom-btn zoom-cycle" aria-label="Cycle zoom levels" title="Cycle zoom (1×, 2×, 5×, 10×)">↻</button>
+      <button id="zoom-indicator" class="zoom-indicator" aria-label="Cycle zoom levels" title="Tap to cycle zoom (1×, 2×, 5×, 10×)">1×</button>
     </div>
   </div>
 
@@ -119,7 +116,7 @@
         <div class="setting-row">
           <label>
             <input type="checkbox" id="zoom-buttons-enabled" checked>
-            <span>Show Zoom Buttons (+/−/Cycle)</span>
+            <span>Show Zoom Indicator (tap to cycle)</span>
           </label>
         </div>
       </div>
