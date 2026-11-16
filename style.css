@@ -41,8 +41,8 @@ input, select, button {
 
 /* Main app container - full height flex column */
 .app-container {
-  min-height: 100vh;
-  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile */
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -50,13 +50,14 @@ input, select, button {
 
 /* Camera viewport - fills available space, contains camera + overlay + top/bottom bars */
 .camera-viewport {
-  flex: 1;
+  flex: 1 1 auto; /* Allow shrinking to accommodate bottom panels */
   position: relative;
   display: flex;
   flex-direction: column;
   z-index: 5;
   overflow: hidden;
   background: var(--bg);
+  min-height: 0; /* Allow shrinking below content size */
 }
 
 /* Video - full screen camera feed within viewport */
