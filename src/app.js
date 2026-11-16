@@ -164,7 +164,9 @@ function debug(msg) {
 }
 
 /**
- * Update camera viewport bottom margin based on visible bottom panels
+ * Update camera viewport for bottom panels
+ * With flex layout, panels are in normal flow below viewport
+ * Viewport automatically takes remaining space
  */
 function updateViewportForPanels() {
   const locationsVisible = locationsPanel.style.display !== 'none';
@@ -173,15 +175,6 @@ function updateViewportForPanels() {
 
   if (panelsVisibleNow !== panelsVisible) {
     panelsVisible = panelsVisibleNow;
-    if (cameraViewport) {
-      if (panelsVisible) {
-        // Panels are visible - viewport should end above them
-        cameraViewport.style.bottom = '0';
-      } else {
-        // No panels - viewport fills full screen
-        cameraViewport.style.bottom = '0';
-      }
-    }
     debug(`Panels visibility changed: ${panelsVisible}`);
   }
 }

@@ -39,17 +39,24 @@ input, select, button {
   user-select: text;
 }
 
-/* Camera viewport - fills screen minus bottom panels */
+/* Main app container - full height flex column */
+.app-container {
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* Camera viewport - fills available space, contains camera + overlay + top/bottom bars */
 .camera-viewport {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0; /* Will be adjusted by JS when panels are visible */
+  flex: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
   z-index: 5;
   overflow: hidden;
+  background: var(--bg);
 }
 
 /* Video - full screen camera feed within viewport */
@@ -72,9 +79,12 @@ input, select, button {
   pointer-events: none;
 }
 
-/* Top bar - GPS/Compass related */
+/* Top bar - GPS/Compass related (overlay on camera) */
 .top-bar {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -88,9 +98,12 @@ input, select, button {
   pointer-events: auto;
 }
 
-/* Bottom bar - Camera related controls */
+/* Bottom bar - Camera related controls (overlay on camera) */
 .bottom-bar {
-  position: relative;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -386,17 +399,13 @@ input, select, button {
   color: var(--text-dim);
 }
 
-/* Bottom panel container - stacked vertically (locations on top, debug below) */
-/* Positioned at bottom of viewport, below camera view */
+/* Bottom Panels Container - normal flow, below camera viewport */
 #bottom-panels {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
   display: flex;
   flex-direction: column;
-  z-index: 15;
+  z-index: 10;
   pointer-events: none;
+  background: transparent;
 }
 
 #bottom-panels > * {

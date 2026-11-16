@@ -16,59 +16,133 @@
   <!-- Version indicator (click for settings) -->
   <button id="version-badge" title="Settings">v1.0.0</button>
 
-  <!-- Camera feed container - fills viewport minus top/bottom bars -->
-  <div id="camera-viewport" class="camera-viewport">
-    <!-- Camera feed -->
-    <video id="camera" autoplay playsinline muted style="display: none;"></video>
+  <!-- Main app container - full height, flex column -->
+  <div id="app-container" class="app-container">
+    <!-- Camera viewport - fills available space, contains camera + overlay + top/bottom bars -->
+    <div id="camera-viewport" class="camera-viewport">
+      <!-- Camera feed -->
+      <video id="camera" autoplay playsinline muted style="display: none;"></video>
 
-    <!-- Canvas overlay for markers (lane logic in center) -->
-    <canvas id="overlay" aria-label="Horizon markers overlay"></canvas>
+      <!-- Canvas overlay for markers (lane logic in center) -->
+      <canvas id="overlay" aria-label="Horizon markers overlay"></canvas>
 
-    <!-- TOP BAR: GPS/Compass related -->
-    <div class="top-bar">
-      <button id="compass-btn" class="compass-btn" aria-label="Tap to calibrate compass">
-        <canvas id="compass-canvas" width="200" height="200"></canvas>
-      </button>
-
-      <!-- Bearing display - shows current heading -->
-      <div id="bearing-display" class="bearing-display" aria-label="Current heading">
-        <span id="bearing-cardinal" class="bearing-cardinal">—</span>
-        <span id="bearing-degrees" class="bearing-degrees">—°</span>
-      </div>
-
-      <div class="status-indicators">
-        <div id="status-gps" class="warn">📍 GPS: —</div>
-        <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
-      </div>
-    </div>
-
-    <!-- BOTTOM BAR: Camera related controls -->
-    <div class="bottom-bar">
-      <!-- Camera controls row (lens switch + zoom indicator) -->
-      <div class="camera-controls-row">
-        <!-- Camera/Lens switcher (left) -->
-        <button id="lens-switch-btn" class="lens-switch-btn camera-side-btn" style="display: none;" aria-label="Switch camera lens" title="Switch lens">
-          📷↔️
+      <!-- TOP BAR: GPS/Compass related (overlay on camera) -->
+      <div class="top-bar">
+        <button id="compass-btn" class="compass-btn" aria-label="Tap to calibrate compass">
+          <canvas id="compass-canvas" width="200" height="200"></canvas>
         </button>
 
-        <!-- Spacer for shutter button centering -->
-        <div class="shutter-spacer"></div>
+        <!-- Bearing display - shows current heading -->
+        <div id="bearing-display" class="bearing-display" aria-label="Current heading">
+          <span id="bearing-cardinal" class="bearing-cardinal">—</span>
+          <span id="bearing-degrees" class="bearing-degrees">—°</span>
+        </div>
 
-        <!-- Zoom indicator (click to cycle) - right -->
-        <div id="zoom-controls" class="zoom-controls camera-side-btn" style="display: none;">
-          <button id="zoom-indicator" class="zoom-indicator" aria-label="Cycle zoom levels" title="Tap to cycle zoom (1×, 2×, 5×, 10×)">1×</button>
+        <div class="status-indicators">
+          <div id="status-gps" class="warn">📍 GPS: —</div>
+          <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
         </div>
       </div>
 
-      <!-- Zoom dial (iOS-style drag to zoom) - above shutter -->
-      <div id="zoom-dial" class="zoom-dial" style="display: none;">
-        <canvas id="zoom-dial-canvas" width="200" height="80"></canvas>
+      <!-- BOTTOM BAR: Camera related controls (overlay on camera) -->
+      <div class="bottom-bar">
+        <!-- Camera controls row (lens switch + zoom indicator) -->
+        <div class="camera-controls-row">
+          <!-- Camera/Lens switcher (left) -->
+          <button id="lens-switch-btn" class="lens-switch-btn camera-side-btn" style="display: none;" aria-label="Switch camera lens" title="Switch lens">
+            📷↔️
+          </button>
+
+          <!-- Spacer for shutter button centering -->
+          <div class="shutter-spacer"></div>
+
+          <!-- Zoom indicator (click to cycle) - right -->
+          <div id="zoom-controls" class="zoom-controls camera-side-btn" style="display: none;">
+            <button id="zoom-indicator" class="zoom-indicator" aria-label="Cycle zoom levels" title="Tap to cycle zoom (1×, 2×, 5×, 10×)">1×</button>
+          </div>
+        </div>
+
+        <!-- Zoom dial (iOS-style drag to zoom) - above shutter -->
+        <div id="zoom-dial" class="zoom-dial" style="display: none;">
+          <canvas id="zoom-dial-canvas" width="200" height="80"></canvas>
+        </div>
+
+        <!-- Camera toggle button - bottom center (shutter) -->
+        <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
+          📷
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Panels Container (Locations and Debug) - BELOW camera viewport, normal flow -->
+    <div id="bottom-panels">
+      <!-- Locations Panel (top) -->
+      <div id="locations-panel" class="panel" data-state="minimized">
+        <div class="panel-header">
+          <h3>Locations (<span id="location-count">0/0</span>)</h3>
+          <div class="panel-controls">
+            <button id="minimize-locations-btn" class="control-btn" aria-label="Minimize locations panel" title="Minimize" style="display: none;">−</button>
+            <button id="maximize-locations-btn" class="control-btn" aria-label="Maximize locations panel" title="Maximize">□</button>
+            <button id="add-location-btn" class="add-btn">+ Add</button>
+          </div>
+        </div>
+
+        <div class="panel-content">
+          <!-- Location Form -->
+          <div id="location-form-container" class="form-container" style="display: none;">
+            <form id="location-form">
+              <div class="field">
+                <label>Name</label>
+                <input type="text" id="loc-name" placeholder="Location name" required>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label>Latitude</label>
+                  <input type="number" step="any" id="loc-lat" placeholder="32.068444" required>
+                </div>
+                <div class="field">
+                  <label>Longitude</label>
+                  <input type="number" step="any" id="loc-lon" placeholder="34.784437" required>
+                </div>
+              </div>
+              <div class="field">
+                <label>Type</label>
+                <select id="loc-type">
+                  <option value="building">Building</option>
+                  <option value="landmark">Landmark</option>
+                  <option value="poi">Point of Interest</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Color</label>
+                <div id="loc-color-swatches" class="color-swatches" role="radiogroup" aria-label="Location color"></div>
+                <input type="hidden" id="loc-color" value="">
+              </div>
+              <div class="form-actions">
+                <button type="button" id="loc-cancel-btn" class="cancel-btn">Cancel</button>
+                <button type="submit" class="save-btn">Save</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Location List -->
+          <div id="location-list" class="location-list"></div>
+        </div>
       </div>
 
-      <!-- Camera toggle button - bottom center (shutter) -->
-      <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
-        📷
-      </button>
+      <!-- Debug Pane (bottom) - same style as locations panel -->
+      <div id="debug-pane" class="panel debug-pane" data-state="minimized">
+        <div class="panel-header">
+          <h3>Debug</h3>
+          <div class="panel-controls">
+            <button id="minimize-debug-btn" class="control-btn" aria-label="Minimize debug pane" title="Minimize" style="display: none;">−</button>
+            <button id="maximize-debug-btn" class="control-btn" aria-label="Maximize debug pane" title="Maximize">□</button>
+            <button id="clear-debug-btn" class="control-btn" aria-label="Clear debug log" title="Clear">🗑</button>
+          </div>
+        </div>
+        <div id="debug-content" class="debug-content panel-content"></div>
+      </div>
     </div>
   </div>
 
@@ -309,77 +383,6 @@
         <p>Accuracy: <span id="cal-accuracy" class="warn">—</span></p>
         <button id="cal-apply-btn" class="picker-btn primary">Apply & Save</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Bottom Panels Container (Locations and Debug) - BELOW camera viewport -->
-  <div id="bottom-panels">
-    <!-- Locations Panel (top) -->
-    <div id="locations-panel" class="panel" data-state="minimized">
-      <div class="panel-header">
-        <h3>Locations (<span id="location-count">0/0</span>)</h3>
-        <div class="panel-controls">
-          <button id="minimize-locations-btn" class="control-btn" aria-label="Minimize locations panel" title="Minimize" style="display: none;">−</button>
-          <button id="maximize-locations-btn" class="control-btn" aria-label="Maximize locations panel" title="Maximize">□</button>
-          <button id="add-location-btn" class="add-btn">+ Add</button>
-        </div>
-      </div>
-
-      <div class="panel-content">
-        <!-- Location Form -->
-        <div id="location-form-container" class="form-container" style="display: none;">
-          <form id="location-form">
-            <div class="field">
-              <label>Name</label>
-              <input type="text" id="loc-name" placeholder="Location name" required>
-            </div>
-            <div class="field-row">
-              <div class="field">
-                <label>Latitude</label>
-                <input type="number" step="any" id="loc-lat" placeholder="32.068444" required>
-              </div>
-              <div class="field">
-                <label>Longitude</label>
-                <input type="number" step="any" id="loc-lon" placeholder="34.784437" required>
-              </div>
-            </div>
-            <div class="field">
-              <label>Type</label>
-              <select id="loc-type">
-                <option value="building">Building</option>
-                <option value="landmark">Landmark</option>
-                <option value="poi">Point of Interest</option>
-                <option value="custom">Custom</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Color</label>
-              <div id="loc-color-swatches" class="color-swatches" role="radiogroup" aria-label="Location color"></div>
-              <input type="hidden" id="loc-color" value="">
-            </div>
-            <div class="form-actions">
-              <button type="button" id="loc-cancel-btn" class="cancel-btn">Cancel</button>
-              <button type="submit" class="save-btn">Save</button>
-            </div>
-          </form>
-        </div>
-
-        <!-- Location List -->
-        <div id="location-list" class="location-list"></div>
-      </div>
-    </div>
-
-    <!-- Debug Pane (bottom) - same style as locations panel -->
-    <div id="debug-pane" class="panel debug-pane" data-state="minimized">
-      <div class="panel-header">
-        <h3>Debug</h3>
-        <div class="panel-controls">
-          <button id="minimize-debug-btn" class="control-btn" aria-label="Minimize debug pane" title="Minimize" style="display: none;">−</button>
-          <button id="maximize-debug-btn" class="control-btn" aria-label="Maximize debug pane" title="Maximize">□</button>
-          <button id="clear-debug-btn" class="control-btn" aria-label="Clear debug log" title="Clear">🗑</button>
-        </div>
-      </div>
-      <div id="debug-content" class="debug-content panel-content"></div>
     </div>
   </div>
 
