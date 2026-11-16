@@ -378,3 +378,212 @@ export function setupPinchZoom(videoElement, onZoomChange) {
     videoElement.removeEventListener('touchcancel', handleTouchEnd);
   };
 }
+
+/**
+ * Setup zoom dial (iOS-style horizontal drag to zoom)
+ * @param {HTMLCanvasElement} canvas - Canvas element for dial
+ * @param {Function} onZoomChange - Callback when zoom changes
+ * @returns {Function} Cleanup function
+ */
+export function setupZoomDial(canvas, onZoomChange) {
+  const ctx = canvas.getContext('2d');
+  let isDragging = false;
+  let startX = 0;
+  let startZoom = currentZoomLevel;
+  let animationFrame = null;
+
+  // Dial configuration
+  const DIAL_HEIGHT = 80;
+  const TRACK_HEIGHT = 4;
+  const HANDLE_RADIUS = 16;
+  const PADDING = 20;
+
+  function drawDial(zoom) {
+    const width = canvas.width;
+    const height = canvas.height;
+    const centerY = height / 2;
+    const trackY = centerY;
+    const trackStartX = PADDING;
+    const trackEndX = width - PADDING;
+    const trackWidth = trackEndX - trackStartX;
+
+    // Calculate handle position based on zoom level
+    const zoomRange = availableZoomLevels[availableZoomLevels.length - 1] - availableZoomLevels[0];
+    const zoomProgress = zoomRange > 0 ? (zoom - availableZoomLevels[0]) / zoomRange : 0;
+    const handleX = trackStartX + zoomProgress * trackWidth;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw background track
+    ctx.beginPath();
+    ctx.moveTo(trackStartX, trackY);
+    ctx.lineTo(trackEndX, trackY);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = TRACK_HEIGHT;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Draw active track (from min to current position)
+    ctx.beginPath();
+    ctx.moveTo(trackStartX, trackY);
+    ctx.lineTo(handleX, trackY);
+    ctx.strokeStyle = '#4ECDC4'; // accent color
+    ctx.lineWidth = TRACK_HEIGHT;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Draw zoom level markers
+    availableZoomLevels.forEach((level, i) => {
+      const markerProgress = zoomRange > 0 ? (level - availableZoomLevels[0]) / zoomRange : 0;
+      const markerX = trackStartX + markerProgress * trackWidth;
+
+      // Marker line
+      ctx.beginPath();
+      ctx.moveTo(markerX, trackY - 10);
+      ctx.lineTo(markerX, trackY + 10);
+      ctx.strokeStyle = markerProgress <= zoomProgress ? '#4ECDC4' : 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Marker label
+      ctx.fillStyle = markerProgress <= zoomProgress ? '#4ECDC4' : 'rgba(255,255,255,0.7)';
+      ctx.font = '11px ui-monospace, SFMono-Regular, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${level}×`, markerX, trackY - 14);
+    });
+
+    // Draw handle
+    ctx.beginPath();
+    ctx.arc(handleX, trackY, HANDLE_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fill();
+    ctx.strokeStyle = '#4ECDC4';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw current zoom in center of handle
+    ctx.fillStyle = '#4ECDC4';
+    ctx.font = 'bold 14px ui-monospace, SFMono-Regular, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${zoom}×`, handleX, trackY);
+  }
+
+  function handlePointerDown(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+    // Check if click is near handle
+    const width = canvas.width;
+    const trackStartX = PADDING;
+    const trackEndX = width - PADDING;
+    const trackWidth = trackEndX - trackStartX;
+    const zoomRange = availableZoomLevels[availableZoomLevels.length - 1] - availableZoomLevels[0];
+    const zoomProgress = zoomRange > 0 ? (currentZoomLevel - availableZoomLevels[0]) / zoomRange : 0;
+    const handleX = trackStartX + zoomProgress * trackWidth;
+    const centerY = canvas.height / 2;
+
+    const dx = x - handleX;
+    const dy = y - centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist <= HANDLE_RADIUS + 20) { // Generous hit area
+      isDragging = true;
+      startX = e.touches ? e.touches[0].clientX : e.clientX;
+      startZoom = currentZoomLevel;
+      e.preventDefault();
+
+      // Start animation loop for smooth updates
+      function animate() {
+        drawDial(currentZoomLevel);
+        animationFrame = requestAnimationFrame(animate);
+      }
+      animate();
+    }
+  }
+
+  function handlePointerMove(e) {
+    if (!isDragging) return;
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const deltaX = clientX - startX;
+
+    // Map drag distance to zoom level
+    const width = canvas.width;
+    const trackStartX = PADDING;
+    const trackEndX = width - PADDING;
+    const trackWidth = trackEndX - trackStartX;
+
+    const pixelsPerZoomLevel = trackWidth / (availableZoomLevels.length - 1);
+    const zoomSteps = deltaX / pixelsPerZoomLevel;
+
+    // Find target zoom level
+    const startIdx = availableZoomLevels.indexOf(startZoom);
+    const targetIdx = Math.round(startIdx + zoomSteps);
+    const clampedIdx = Math.max(0, Math.min(availableZoomLevels.length - 1, targetIdx));
+    const newZoom = availableZoomLevels[clampedIdx];
+
+    if (newZoom !== currentZoomLevel && videoTrack) {
+      setZoom(videoTrack, newZoom).then(success => {
+        if (success && onZoomChange) {
+          onZoomChange(newZoom);
+        }
+      });
+    }
+
+    e.preventDefault();
+  }
+
+  function handlePointerUp(e) {
+    if (isDragging) {
+      isDragging = false;
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+      }
+      // Final draw
+      drawDial(currentZoomLevel);
+    }
+  }
+
+  // Initialize canvas size
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = DIAL_HEIGHT * window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    drawDial(currentZoomLevel);
+  }
+
+  // Initial draw
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  // Add event listeners
+  canvas.addEventListener('mousedown', handlePointerDown, { passive: false });
+  canvas.addEventListener('mousemove', handlePointerMove, { passive: false });
+  canvas.addEventListener('mouseup', handlePointerUp, { passive: false });
+  canvas.addEventListener('mouseleave', handlePointerUp, { passive: false });
+  canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+  canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+  canvas.addEventListener('touchend', handlePointerUp, { passive: false });
+  canvas.addEventListener('touchcancel', handlePointerUp, { passive: false });
+
+  // Return cleanup function
+  return () => {
+    window.removeEventListener('resize', resizeCanvas);
+    canvas.removeEventListener('mousedown', handlePointerDown);
+    canvas.removeEventListener('mousemove', handlePointerMove);
+    canvas.removeEventListener('mouseup', handlePointerUp);
+    canvas.removeEventListener('mouseleave', handlePointerUp);
+    canvas.removeEventListener('touchstart', handlePointerDown);
+    canvas.removeEventListener('touchmove', handlePointerMove);
+    canvas.removeEventListener('touchend', handlePointerUp);
+    canvas.removeEventListener('touchcancel', handlePointerUp);
+    if (animationFrame) {
+      cancelAnimationFrame(animationFrame);
+    }
+  };
+}

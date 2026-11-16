@@ -136,12 +136,26 @@ input, select, button {
   border-color: rgba(255, 190, 11, 0.3);
 }
 
-/* Camera toggle button - bottom center (shutter style) */
-.camera-toggle-btn {
+/* Camera controls container - bottom center */
+.camera-controls {
   position: fixed;
   bottom: calc(16px + env(safe-area-inset-bottom));
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.camera-controls > * {
+  pointer-events: auto;
+}
+
+/* Camera toggle button - bottom center (shutter style) */
+.camera-toggle-btn {
   width: 72px;
   height: 72px;
   border-radius: 50%;
@@ -154,12 +168,11 @@ input, select, button {
   align-items: center;
   justify-content: center;
   transition: transform 0.1s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
-  z-index: 30;
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 .camera-toggle-btn:active {
-  transform: translateX(-50%) scale(0.9);
+  transform: scale(0.9);
 }
 
 .camera-toggle-btn.off {
@@ -172,7 +185,7 @@ input, select, button {
   box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 4px rgba(78, 205, 196, 0.3);
 }
 
-/* Zoom controls - top bar */
+/* Zoom controls - above camera button */
 .zoom-controls {
   display: flex;
   align-items: center;
@@ -205,7 +218,21 @@ input, select, button {
   color: var(--text);
 }
 
-/* Lens switch button - top bar */
+/* Zoom dial (iOS-style drag to zoom) */
+.zoom-dial {
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  justify-content: center;
+}
+
+#zoom-dial-canvas {
+  width: 100%;
+  height: 80px;
+  touch-action: none;
+}
+
+/* Lens switch button - in camera controls */
 .lens-switch-btn {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(10px);
@@ -227,6 +254,102 @@ input, select, button {
 
 .lens-switch-btn:hover {
   background: rgba(255,255,255,0.15);
+}
+
+/* Camera controls container - bottom center */
+.camera-controls {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.camera-controls > * {
+  pointer-events: auto;
+}
+
+/* Camera toggle button - bottom center (shutter style) */
+.camera-toggle-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 4px solid var(--border);
+  cursor: pointer;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.camera-toggle-btn:active {
+  transform: scale(0.9);
+}
+
+.camera-toggle-btn.off {
+  background: rgba(255, 107, 107, 0.3);
+  border-color: rgba(255, 107, 107, 0.5);
+}
+
+.camera-toggle-btn:not(.off) {
+  border-color: var(--accent);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 4px rgba(78, 205, 196, 0.3);
+}
+
+/* Zoom controls - above camera button */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px 10px;
+}
+
+/* Zoom indicator as clickable button to cycle levels */
+#zoom-indicator {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 6px;
+  min-width: 44px;
+  text-align: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+#zoom-indicator:active {
+  background: rgba(255,255,255,0.15);
+  color: var(--text);
+}
+
+/* Zoom dial (iOS-style drag to zoom) */
+.zoom-dial {
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  justify-content: center;
+}
+
+#zoom-dial-canvas {
+  width: 100%;
+  height: 80px;
+  touch-action: none;
 }
 
 /* Bearing display */
@@ -326,10 +449,10 @@ input, select, button {
 }
 
 /* Bottom panel container - stacked vertically (locations on top, debug below) */
-/* Positioned above the camera button (72px + 16px margin + safe area) */
+/* Positioned above the camera controls (lens switch ~40px + zoom indicator ~40px + zoom dial ~80px + camera button 72px + gaps 32px + margin 16px) */
 #bottom-panels {
   position: fixed;
-  bottom: calc(88px + 16px + env(safe-area-inset-bottom));
+  bottom: calc(40px + 40px + 80px + 72px + 32px + 16px + env(safe-area-inset-bottom));
   left: 0;
   right: 0;
   display: flex;

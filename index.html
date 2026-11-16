@@ -21,7 +21,7 @@
   <!-- Canvas overlay for markers -->
   <canvas id="overlay" aria-label="Horizon markers overlay"></canvas>
 
-  <!-- Top bar: Compass + Bearing + Status + Lens Switch + Zoom -->
+  <!-- Top bar: Compass + Bearing + Status -->
   <div class="top-bar">
     <button id="compass-btn" class="compass-btn" aria-label="Tap to calibrate compass">
       <canvas id="compass-canvas" width="200" height="200"></canvas>
@@ -37,22 +37,30 @@
       <div id="status-gps" class="warn">📍 GPS: —</div>
       <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
     </div>
+  </div>
 
-    <!-- Camera/Lens switcher (top right) -->
+  <!-- Camera controls - bottom center (above panels) -->
+  <div class="camera-controls">
+    <!-- Camera/Lens switcher (left) -->
     <button id="lens-switch-btn" class="lens-switch-btn" style="display: none;" aria-label="Switch camera lens" title="Switch lens">
       📷↔️
     </button>
 
-    <!-- Zoom indicator (click to cycle) -->
+    <!-- Zoom indicator (click to cycle) - center -->
     <div id="zoom-controls" class="zoom-controls" style="display: none;">
       <button id="zoom-indicator" class="zoom-indicator" aria-label="Cycle zoom levels" title="Tap to cycle zoom (1×, 2×, 5×, 10×)">1×</button>
     </div>
-  </div>
 
-  <!-- Camera toggle button - bottom center (like camera app shutter) -->
-  <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
-    📷
-  </button>
+    <!-- Zoom dial (iOS-style drag to zoom) - center, below zoom indicator -->
+    <div id="zoom-dial" class="zoom-dial" style="display: none;">
+      <canvas id="zoom-dial-canvas" width="200" height="80"></canvas>
+    </div>
+
+    <!-- Camera toggle button - bottom center (like camera app shutter) -->
+    <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
+      📷
+    </button>
+  </div>
 
   <!-- Settings Overlay -->
   <div id="settings-overlay" class="overlay" style="display: none;">
@@ -117,6 +125,12 @@
           <label>
             <input type="checkbox" id="zoom-buttons-enabled" checked>
             <span>Show Zoom Indicator (tap to cycle)</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="zoom-dial-enabled" checked>
+            <span>Show Zoom Dial (drag to zoom)</span>
           </label>
         </div>
       </div>
@@ -265,33 +279,19 @@
         <h2>Compass Calibration</h2>
         <button id="cal-close-btn" class="picker-close" aria-label="Close">×</button>
       </div>
-      <p class="picker-instruction">Select a visible location, point phone at it, tap Calibrate</p>
-
-      <div class="picker-field">
-        <label>Visible Location:</label>
-        <select id="cal-location-select"></select>
+      <div class="picker-instruction">
+        <p>Walk in a figure-8 pattern to calibrate the compass. The device will auto-calibrate when enough samples are collected.</p>
+        <p>Current status: <span id="cal-status" class="warn">Waiting for motion...</span></p>
+        <p>Samples: <span id="cal-samples">0</span> / <span id="cal-target">50</span></p>
       </div>
-
-      <div class="current-gps-status">
-        <div class="gps-stat">
-          <span class="gps-stat-label">Compass</span>
-          <span id="cal-compass" class="gps-stat-value">—</span>
-        </div>
-        <div class="gps-stat">
-          <span class="gps-stat-label">True Bearing</span>
-          <span id="cal-bearing" class="gps-stat-value">—</span>
-        </div>
-        <div class="gps-stat">
-          <span class="gps-stat-label">GPS</span>
-          <span id="cal-gps" class="gps-stat-value">Waiting...</span>
-        </div>
-      </div>
-
-      <div id="cal-result" class="picker-selected-info" style="display: none;"></div>
-
       <div class="picker-actions">
-        <button id="cal-cancel-btn" class="picker-btn secondary">Cancel</button>
         <button id="cal-calibrate-btn" class="picker-btn primary">Calibrate Now</button>
+      </div>
+      <div id="cal-result" style="display: none; margin-top: 16px;">
+        <h4>Calibration Complete</h4>
+        <p>Offset: <span id="cal-offset">—</span>°</p>
+        <p>Accuracy: <span id="cal-accuracy" class="warn">—</span></p>
+        <button id="cal-apply-btn" class="picker-btn primary">Apply & Save</button>
       </div>
     </div>
   </div>

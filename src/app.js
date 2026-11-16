@@ -16,6 +16,7 @@ import {
   cycleZoomLevel,
   cycleZoomLevelBack,
   setupPinchZoom,
+  setupZoomDial,
   getAvailableCameras,
   DEFAULT_ZOOM_LEVELS
 } from './camera.js';
@@ -91,12 +92,15 @@ const calibrationOverlay = document.getElementById('calibration-overlay');
 // Zoom controls
 const zoomControls = document.getElementById('zoom-controls');
 const zoomIndicator = document.getElementById('zoom-indicator');
+const zoomDial = document.getElementById('zoom-dial');
+const zoomDialCanvas = document.getElementById('zoom-dial-canvas');
 // Lens switch button
 const lensSwitchBtn = document.getElementById('lens-switch-btn');
 // Zoom settings
 const zoomLevelsSelect = document.getElementById('zoom-levels');
 const zoomGestureEnabledCheckbox = document.getElementById('zoom-gesture-enabled');
 const zoomButtonsEnabledCheckbox = document.getElementById('zoom-buttons-enabled');
+const zoomDialEnabledCheckbox = document.getElementById('zoom-dial-enabled');
 
 // Compass dial interaction state
 let compassDialActive = false;
@@ -140,6 +144,7 @@ let cleanWheelEnabled = true; // Default ON
 let availableZoomLevels = [...DEFAULT_ZOOM_LEVELS];
 let currentZoomLevel = 1;
 let pinchZoomCleanup = null; // Cleanup function for pinch zoom
+let zoomDialCleanup = null; // Cleanup function for zoom dial
 
 // Debug function (module scope so callbacks can use it)
 function debug(msg) {
@@ -932,6 +937,17 @@ function setupZoomControls() {
     zoomIndicator.onclick = () => handleZoomCycle();
   }
 
+  // Setup zoom dial
+  const zoomDialEnabled = localStorage.getItem('viewfinder:zoomDialEnabled') !== 'false';
+  if (zoomDialEnabled && zoomDial && zoomDialCanvas) {
+    zoomDial.style.display = 'flex';
+    zoomDialCleanup = setupZoomDial(zoomDialCanvas, (newZoom) => {
+      currentZoomLevel = newZoom;
+      updateZoomIndicator();
+      debug(`Zoom dial: ${newZoom}×`);
+    });
+  }
+
   // Setup pinch-to-zoom gesture
   const zoomGestureEnabled = localStorage.getItem('viewfinder:zoomGestureEnabled') !== 'false';
   if (zoomGestureEnabled && video) {
@@ -953,9 +969,16 @@ function cleanupZoomControls() {
   if (zoomControls) {
     zoomControls.style.display = 'none';
   }
+  if (zoomDial) {
+    zoomDial.style.display = 'none';
+  }
   if (pinchZoomCleanup) {
     pinchZoomCleanup();
     pinchZoomCleanup = null;
+  }
+  if (zoomDialCleanup) {
+    zoomDialCleanup();
+    zoomDialCleanup = null;
   }
 }
 
@@ -1065,7 +1088,33 @@ function setupZoomSettings() {
       if (zoomControls) {
         zoomControls.style.display = enabled && cameraEnabled ? 'flex' : 'none';
       }
-      debug(`Zoom buttons ${enabled ? 'shown' : 'hidden'}`);
+      debug(`Zoom indicator ${enabled ? 'shown' : 'hidden'}`);
+    });
+  }
+
+  // Zoom dial toggle
+  if (zoomDialEnabledCheckbox) {
+    const saved = localStorage.getItem('viewfinder:zoomDialEnabled');
+    zoomDialEnabledCheckbox.checked = saved !== 'false';
+
+    zoomDialEnabledCheckbox.addEventListener('change', (e) => {
+      const enabled = e.target.checked;
+      localStorage.setItem('viewfinder:zoomDialEnabled', enabled);
+
+      if (enabled && zoomDial && zoomDialCanvas && cameraEnabled) {
+        zoomDial.style.display = 'flex';
+        zoomDialCleanup = setupZoomDial(zoomDialCanvas, (newZoom) => {
+          currentZoomLevel = newZoom;
+          updateZoomIndicator();
+          debug(`Zoom dial: ${newZoom}×`);
+        });
+        debug('Zoom dial enabled');
+      } else if (!enabled && zoomDialCleanup) {
+        zoomDial.style.display = 'none';
+        zoomDialCleanup();
+        zoomDialCleanup = null;
+        debug('Zoom dial disabled');
+      }
     });
   }
 }
