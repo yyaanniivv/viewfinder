@@ -176,78 +176,6 @@ input, select, button {
   border-color: rgba(255, 190, 11, 0.3);
 }
 
-/* Camera controls container - bottom center */
-.camera-controls {
-  position: fixed;
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  z-index: 30;
-  pointer-events: none;
-}
-
-.camera-controls > * {
-  pointer-events: auto;
-}
-
-/* Camera toggle button - bottom center (shutter style) */
-.camera-toggle-btn {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
-  border: 4px solid var(--border);
-  cursor: pointer;
-  font-size: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.1s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
-
-.camera-toggle-btn:active {
-  transform: scale(0.9);
-}
-
-.camera-toggle-btn.off {
-  background: rgba(255, 107, 107, 0.3);
-  border-color: rgba(255, 107, 107, 0.5);
-}
-
-.camera-toggle-btn:not(.off) {
-  border-color: var(--accent);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 4px rgba(78, 205, 196, 0.3);
-}
-
-/* Lens switch button - in camera controls */
-.lens-switch-btn {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 8px 10px;
-  cursor: pointer;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.1s, background 0.2s;
-}
-
-.lens-switch-btn:active {
-  transform: scale(0.95);
-}
-
-.lens-switch-btn:hover {
-  background: rgba(255,255,255,0.15);
-}
-
 /* Camera controls row - lens switch | shutter | zoom indicator */
 .camera-controls-row {
   display: flex;
@@ -296,6 +224,29 @@ input, select, button {
 .camera-toggle-btn:not(.off) {
   border-color: var(--accent);
   box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 4px rgba(78, 205, 196, 0.3);
+}
+
+/* Lens switch button */
+.lens-switch-btn {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.lens-switch-btn:active {
+  transform: scale(0.95);
+}
+
+.lens-switch-btn:hover {
+  background: rgba(255,255,255,0.15);
 }
 
 /* Zoom indicator (bottom bar) - styled like GPS status */
