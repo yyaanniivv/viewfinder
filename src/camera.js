@@ -9,6 +9,7 @@ export const DEFAULT_ZOOM_LEVELS = [1, 2, 5, 10];
 // State for zoom management
 let currentZoomLevel = 1;
 let availableZoomLevels = [...DEFAULT_ZOOM_LEVELS];
+let userConfiguredZoomLevels = false; // Track if user has customized zoom levels
 let videoTrack = null;
 let currentDeviceId = null;
 let availableDevices = [];
@@ -16,11 +17,37 @@ let availableDevices = [];
 /**
  * Get available video input devices (cameras/lenses)
  * Returns array of { deviceId, label, kind }
+ * @param {boolean} rearOnly - If true, only return rear-facing cameras (for lens switching)
  */
-export async function getAvailableCameras() {
+export async function getAvailableCameras(rearOnly = false) {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
-    availableDevices = devices.filter(d => d.kind === 'videoinput');
+    let filtered = devices.filter(d => d.kind === 'videoinput');
+
+    if (rearOnly) {
+      // Filter to rear-facing cameras only (environment)
+      // Check device label for common rear camera identifiers
+      filtered = filtered.filter(d => {
+        const label = (d.label || '').toLowerCase();
+        return label.includes('back') ||
+               label.includes('rear') ||
+               label.includes('environment') ||
+               label.includes('ultra wide') ||
+               label.includes('wide') ||
+               label.includes('telephoto') ||
+               label.includes('main') ||
+               label.includes('camera 1') ||
+               label.includes('camera 2') ||
+               label.includes('camera 3');
+      });
+
+      // If filtering results in empty, fall back to all video inputs
+      if (filtered.length === 0) {
+        filtered = devices.filter(d => d.kind === 'videoinput');
+      }
+    }
+
+    availableDevices = filtered;
     return availableDevices;
   } catch (err) {
     console.error('Error enumerating devices:', err);
@@ -100,6 +127,7 @@ export function getAvailableZoomLevels() {
  */
 export function setAvailableZoomLevels(levels) {
   availableZoomLevels = [...levels].sort((a, b) => a - b);
+  userConfiguredZoomLevels = true;
   // Ensure current zoom is valid
   if (!availableZoomLevels.includes(currentZoomLevel)) {
     currentZoomLevel = availableZoomLevels[0] || 1;
@@ -167,8 +195,8 @@ export async function startCamera(videoElement, options = {}) {
 
       // Get actual zoom capabilities
       const caps = await getZoomCapabilities(videoTrack);
-      if (caps.supportsZoom) {
-        // Update available zoom levels based on device capabilities
+      if (caps.supportsZoom && !userConfiguredZoomLevels) {
+        // Update available zoom levels based on device capabilities (only if user hasn't customized)
         const maxZoom = Math.floor(caps.max);
         const newLevels = [];
         for (let z = 1; z <= maxZoom; z++) {
@@ -181,9 +209,16 @@ export async function startCamera(videoElement, options = {}) {
         }
       }
 
+      // Clamp zoom to new camera's capabilities
+      let finalZoom = zoom;
+      if (caps.supportsZoom && zoom > caps.max) {
+        finalZoom = caps.max;
+        currentZoomLevel = caps.max;
+      }
+
       // Apply initial zoom if > 1
-      if (zoom > 1) {
-        await setZoom(videoTrack, zoom);
+      if (finalZoom > 1) {
+        await setZoom(videoTrack, finalZoom);
       }
     }
 
@@ -207,7 +242,7 @@ export async function switchCamera(videoElement, deviceId, currentStream) {
   // Stop current stream
   stopCamera(currentStream);
 
-  // Start new camera with current zoom
+  // Start new camera with current zoom (will be clamped in startCamera)
   return startCamera(videoElement, {
     deviceId,
     zoom: currentZoomLevel
@@ -221,7 +256,8 @@ export async function switchCamera(videoElement, deviceId, currentStream) {
  * @returns {Promise<{stream: MediaStream, deviceId: string, label: string}>}
  */
 export async function cycleCamera(videoElement, currentStream) {
-  const devices = await getAvailableCameras();
+  // Use rearOnly=true to only cycle through rear-facing cameras
+  const devices = await getAvailableCameras(true);
   if (devices.length <= 1) {
     return { stream: currentStream, deviceId: currentDeviceId, label: devices[0]?.label || 'Camera' };
   }

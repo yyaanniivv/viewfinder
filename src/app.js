@@ -1128,7 +1128,8 @@ function setupZoomSettings() {
 async function setupLensSwitch() {
   if (!lensSwitchBtn) return;
 
-  const devices = await getAvailableCameras();
+  // Use rearOnly=true to only show rear-facing cameras for lens switching
+  const devices = await getAvailableCameras(true);
   if (devices.length <= 1) {
     // Only one camera, hide the lens switch button
     lensSwitchBtn.style.display = 'none';
@@ -1146,7 +1147,13 @@ async function setupLensSwitch() {
       debug('Switching camera lens...');
       const result = await cycleCamera(video, cameraStream);
       cameraStream = result.stream;
+
+      // Update zoom indicator after lens switch (zoom may have been clamped)
+      currentZoomLevel = getCurrentZoom();
+      updateZoomIndicator();
+
       debug(`Switched to lens: ${result.label}`);
+      showError(`Lens: ${result.label}`, false); // Show lens name as toast
     } catch (err) {
       debug(`Lens switch error: ${err.message}`);
       showError(`Failed to switch lens: ${err.message}`);
@@ -1214,12 +1221,12 @@ function updateBearingDisplay() {
   degreesEl.textContent = `${Math.round(heading)}°`;
 }
 
-function showError(msg) {
+function showError(msg, isError = true) {
   const toast = document.createElement('div');
-  toast.className = 'error-toast';
+  toast.className = isError ? 'error-toast' : 'info-toast';
   toast.textContent = msg;
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 5000);
+  setTimeout(() => toast.remove(), 3000);
 }
 
 // Calibration UI (landmark-based, from Viewfinder)
