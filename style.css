@@ -303,6 +303,31 @@ input, select, button {
   box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 4px rgba(78, 205, 196, 0.3);
 }
 
+/* Zoom indicator (bottom bar) - styled like GPS status */
+.zoom-indicator {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: var(--accent);
+  border-color: rgba(78, 205, 196, 0.3);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+.zoom-indicator:active {
+  transform: scale(0.95);
+  background: rgba(255,255,255,0.15);
+}
+
+.zoom-indicator:hover {
+  background: rgba(255,255,255,0.1);
+}
+
 /* Bearing display */
 .bearing-display {
   display: flex;
