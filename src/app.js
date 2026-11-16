@@ -62,7 +62,6 @@ const settingsCloseBtn = document.getElementById('settings-close-btn');
 const toggleLocationsPanel = document.getElementById('toggle-locations-panel');
 const toggleDebugPane = document.getElementById('toggle-debug-pane');
 const toggleCompass = document.getElementById('toggle-compass');
-const toggleCameraPanel = document.getElementById('toggle-camera-panel');
 const settingsVersion = document.getElementById('settings-version');
 const versionBadge = document.getElementById('version-badge');
 // Camera settings
@@ -472,7 +471,6 @@ async function init() {
     toggleLocationsPanel.checked = locationsPanel.style.display !== 'none';
     toggleDebugPane.checked = debugPane.style.display !== 'none';
     toggleCompass.checked = compassBtn.style.display !== 'none';
-    toggleCameraPanel.checked = cameraToggleBtn.style.display !== 'none';
     cameraEnabledCheckbox.checked = cameraEnabled; // Sync Camera Active checkbox
   });
   settingsCloseBtn?.addEventListener('click', () => {
@@ -500,10 +498,6 @@ async function init() {
   toggleCompass?.addEventListener('change', (e) => {
     compassBtn.style.display = e.target.checked ? 'flex' : 'none';
     localStorage.setItem('viewfinder:showCompass', e.target.checked);
-  });
-  toggleCameraPanel?.addEventListener('change', (e) => {
-    cameraToggleBtn.style.display = e.target.checked ? 'flex' : 'none';
-    localStorage.setItem('viewfinder:showCameraPanel', e.target.checked);
   });
 
   // Camera settings checkboxes
@@ -641,17 +635,6 @@ async function init() {
   }
 
   // Load camera panel visibility preference
-  const showCameraPanel = localStorage.getItem('viewfinder:showCameraPanel');
-  if (showCameraPanel !== null) {
-    const show = showCameraPanel === 'true';
-    cameraToggleBtn.style.display = show ? 'flex' : 'none';
-    toggleCameraPanel.checked = show;
-  } else {
-    // Default: ON
-    cameraToggleBtn.style.display = 'flex';
-    toggleCameraPanel.checked = true;
-  }
-
   // Load saved camera preferences
   const cameraEnabledPref = localStorage.getItem('viewfinder:cameraEnabled');
   if (cameraEnabledPref !== null) {

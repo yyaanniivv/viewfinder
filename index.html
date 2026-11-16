@@ -21,7 +21,7 @@
   <!-- Canvas overlay for markers -->
   <canvas id="overlay" aria-label="Horizon markers overlay"></canvas>
 
-  <!-- Top bar: Compass + Bearing + Status + Camera Toggle -->
+  <!-- Top bar: Compass + Bearing + Status + Lens Switch + Zoom -->
   <div class="top-bar">
     <button id="compass-btn" class="compass-btn" aria-label="Tap to calibrate compass">
       <canvas id="compass-canvas" width="200" height="200"></canvas>
@@ -38,6 +38,11 @@
       <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
     </div>
 
+    <!-- Camera/Lens switcher (top right) -->
+    <button id="lens-switch-btn" class="lens-switch-btn" style="display: none;" aria-label="Switch camera lens" title="Switch lens">
+      📷↔️
+    </button>
+
     <!-- Zoom indicator and controls -->
     <div id="zoom-controls" class="zoom-controls" style="display: none;">
       <button id="zoom-out-btn" class="zoom-btn" aria-label="Zoom out" title="Zoom out">−</button>
@@ -45,16 +50,12 @@
       <button id="zoom-in-btn" class="zoom-btn" aria-label="Zoom in" title="Zoom in">+</button>
       <button id="zoom-cycle-btn" class="zoom-btn zoom-cycle" aria-label="Cycle zoom levels" title="Cycle zoom (1×, 2×, 5×, 10×)">↻</button>
     </div>
-
-    <!-- Camera/Lens switcher -->
-    <button id="lens-switch-btn" class="lens-switch-btn" style="display: none;" aria-label="Switch camera lens" title="Switch lens">
-      🔄
-    </button>
-
-    <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
-      📷
-    </button>
   </div>
+
+  <!-- Camera toggle button - bottom center (like camera app shutter) -->
+  <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
+    📷
+  </button>
 
   <!-- Settings Overlay -->
   <div id="settings-overlay" class="overlay" style="display: none;">
@@ -82,12 +83,6 @@
           <label>
             <input type="checkbox" id="toggle-compass" checked>
             <span>Compass Ring</span>
-          </label>
-        </div>
-        <div class="setting-row">
-          <label>
-            <input type="checkbox" id="toggle-camera-panel">
-            <span>Camera</span>
           </label>
         </div>
       </div>
