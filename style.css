@@ -194,6 +194,12 @@ input, select, button {
   justify-content: center;
 }
 
+/* Spacer to center shutter button */
+.shutter-spacer {
+  flex: 1 1 auto;
+  min-width: 72px; /* Same as shutter button */
+}
+
 /* Camera toggle button - center (shutter style) */
 .camera-toggle-btn {
   width: 72px;
