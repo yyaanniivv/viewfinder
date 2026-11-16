@@ -175,12 +175,6 @@ input, select, button {
   border-color: rgba(255, 190, 11, 0.3);
 }
 
-/* Zoom indicator - uses accent (teal) color like good GPS accuracy */
-.status-indicators .zoom {
-  color: var(--accent);
-  border-color: rgba(78, 205, 196, 0.3);
-}
-
 /* Camera controls container - bottom center */
 .camera-controls {
   position: fixed;
