@@ -88,7 +88,7 @@ input, select, button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 16px;
   z-index: 10;
   pointer-events: none;
   flex-shrink: 0;
@@ -108,7 +108,7 @@ input, select, button {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px 16px;
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 20;
   pointer-events: none;
   flex-shrink: 0;
@@ -1089,6 +1089,10 @@ select {
     padding-top: max(16px, env(safe-area-inset-top));
     padding-left: max(16px, env(safe-area-inset-left));
     padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .bottom-bar {
+    padding-bottom: max(16px, calc(16px + env(safe-area-inset-bottom)));
   }
 
   #locations-panel {
