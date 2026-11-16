@@ -40,6 +40,7 @@
 
         <div class="status-indicators">
           <div id="status-gps" class="warn">📍 GPS: —</div>
+          <div id="status-zoom" class="zoom" style="display: none;">1×</div>
           <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
         </div>
       </div>
@@ -55,11 +56,6 @@
 
           <!-- Spacer for shutter button centering -->
           <div class="shutter-spacer"></div>
-
-          <!-- Zoom indicator (click to cycle) - right -->
-          <div id="zoom-controls" class="zoom-controls camera-side-btn" style="display: none;">
-            <button id="zoom-indicator" class="zoom-indicator" aria-label="Cycle zoom levels" title="Tap to cycle zoom (1×, 2×, 5×, 10×)">1×</button>
-          </div>
         </div>
 
         <!-- Zoom dial (iOS-style drag to zoom) - above shutter -->
@@ -209,6 +205,12 @@
           <label>
             <input type="checkbox" id="zoom-buttons-enabled" checked>
             <span>Show Zoom Indicator (tap to cycle)</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="zoom-topbar-enabled" checked>
+            <span>Show Zoom in Top Bar</span>
           </label>
         </div>
         <div class="setting-row">

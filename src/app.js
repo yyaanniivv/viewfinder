@@ -34,6 +34,7 @@ const cameraViewport = document.getElementById('camera-viewport');
 const compassBtn = document.getElementById('compass-btn');
 const locationsPanel = document.getElementById('locations-panel');
 const statusGPS = document.getElementById('status-gps');
+const statusZoom = document.getElementById('status-zoom');
 const locationCountEl = document.getElementById('location-count');
 const debugPane = document.getElementById('debug-pane');
 const debugContent = document.getElementById('debug-content');
@@ -101,6 +102,7 @@ const lensSwitchBtn = document.getElementById('lens-switch-btn');
 const zoomLevelsSelect = document.getElementById('zoom-levels');
 const zoomGestureEnabledCheckbox = document.getElementById('zoom-gesture-enabled');
 const zoomButtonsEnabledCheckbox = document.getElementById('zoom-buttons-enabled');
+const zoomTopbarEnabledCheckbox = document.getElementById('zoom-topbar-enabled');
 const zoomDialEnabledCheckbox = document.getElementById('zoom-dial-enabled');
 const zoomCycleEnabledCheckbox = document.getElementById('zoom-cycle-enabled');
 
@@ -141,6 +143,8 @@ let levelTagEnabled = false; // Default OFF
 let laneModeEnabled = false; // Default OFF
 // Clean center wheel (only affects lane mode)
 let cleanWheelEnabled = true; // Default ON
+// Zoom top bar indicator
+let zoomTopbarEnabled = true; // Default ON
 
 // Zoom state
 let availableZoomLevels = [...DEFAULT_ZOOM_LEVELS];
@@ -773,6 +777,17 @@ async function init() {
     cleanWheelToggle.checked = true;
   }
 
+  // Load zoom top bar preference (default on)
+  const zoomTopbarPref = localStorage.getItem('viewfinder:zoomTopbarEnabled');
+  if (zoomTopbarPref !== null) {
+    zoomTopbarEnabled = zoomTopbarPref === 'true';
+    zoomTopbarEnabledCheckbox.checked = zoomTopbarEnabled;
+    debug(`Loaded zoom top bar: ${zoomTopbarEnabled ? 'on' : 'off'}`);
+  } else {
+    zoomTopbarEnabled = true;
+    zoomTopbarEnabledCheckbox.checked = true;
+  }
+
   // Load GPS rate preference (default 10s)
   const gpsRatePref = localStorage.getItem('viewfinder:gpsRate');
   if (gpsRatePref !== null) {
@@ -964,6 +979,14 @@ function setupZoomControls() {
     zoomControls.style.display = 'flex';
   }
 
+  // Show/hide zoom in top bar
+  const zoomTopbarEnabled = localStorage.getItem('viewfinder:zoomTopbarEnabled') !== 'false';
+  if (zoomTopbarEnabled && statusZoom) {
+    statusZoom.style.display = 'inline-block';
+  } else if (statusZoom) {
+    statusZoom.style.display = 'none';
+  }
+
   // Setup zoom indicator click to cycle (controlled by zoomCycleEnabled setting)
   const zoomCycleEnabled = localStorage.getItem('viewfinder:zoomCycleEnabled') !== 'false';
   if (zoomCycleEnabled && zoomIndicator) {
@@ -1025,6 +1048,9 @@ function cleanupZoomControls() {
 function updateZoomIndicator() {
   if (zoomIndicator) {
     zoomIndicator.textContent = `${currentZoomLevel}×`;
+  }
+  if (statusZoom) {
+    statusZoom.textContent = `${currentZoomLevel}×`;
   }
 }
 
@@ -1174,6 +1200,22 @@ function setupZoomSettings() {
         }
       }
       debug(`Zoom cycle ${enabled ? 'enabled' : 'disabled'}`);
+    });
+  }
+
+  // Zoom top bar toggle
+  if (zoomTopbarEnabledCheckbox) {
+    const saved = localStorage.getItem('viewfinder:zoomTopbarEnabled');
+    zoomTopbarEnabledCheckbox.checked = saved !== 'false';
+
+    zoomTopbarEnabledCheckbox.addEventListener('change', (e) => {
+      const enabled = e.target.checked;
+      localStorage.setItem('viewfinder:zoomTopbarEnabled', enabled);
+
+      if (statusZoom) {
+        statusZoom.style.display = enabled && cameraEnabled ? 'inline-block' : 'none';
+      }
+      debug(`Zoom top bar indicator ${enabled ? 'shown' : 'hidden'}`);
     });
   }
 }
