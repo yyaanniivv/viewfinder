@@ -30,6 +30,7 @@ import { normalizeBearing, formatDistance, haversineDistance, bearing } from './
 // DOM Elements
 const video = document.getElementById('camera');
 const canvas = document.getElementById('overlay');
+const cameraViewport = document.getElementById('camera-viewport');
 const compassBtn = document.getElementById('compass-btn');
 const locationsPanel = document.getElementById('locations-panel');
 const statusGPS = document.getElementById('status-gps');
@@ -147,6 +148,9 @@ let currentZoomLevel = 1;
 let pinchZoomCleanup = null; // Cleanup function for pinch zoom
 let zoomDialCleanup = null; // Cleanup function for zoom dial
 
+// Panel state
+let panelsVisible = false;
+
 // Debug function (module scope so callbacks can use it)
 function debug(msg) {
   console.log('[App]', msg);
@@ -156,6 +160,29 @@ function debug(msg) {
     line.textContent = `[${timestamp}] ${msg}`;
     debugContent.appendChild(line);
     debugContent.scrollTop = debugContent.scrollHeight;
+  }
+}
+
+/**
+ * Update camera viewport bottom margin based on visible bottom panels
+ */
+function updateViewportForPanels() {
+  const locationsVisible = locationsPanel.style.display !== 'none';
+  const debugVisible = debugPane.style.display !== 'none';
+  const panelsVisibleNow = locationsVisible || debugVisible;
+
+  if (panelsVisibleNow !== panelsVisible) {
+    panelsVisible = panelsVisibleNow;
+    if (cameraViewport) {
+      if (panelsVisible) {
+        // Panels are visible - viewport should end above them
+        cameraViewport.style.bottom = '0';
+      } else {
+        // No panels - viewport fills full screen
+        cameraViewport.style.bottom = '0';
+      }
+    }
+    debug(`Panels visibility changed: ${panelsVisible}`);
   }
 }
 
@@ -409,12 +436,14 @@ async function init() {
     minimizeLocationsBtn.style.display = 'none';
     maximizeLocationsBtn.style.display = 'flex';
     debugPane.classList.add('above-panel');
+    updateViewportForPanels();
   });
   maximizeLocationsBtn?.addEventListener('click', () => {
     locationsPanel.dataset.state = 'maximized';
     maximizeLocationsBtn.style.display = 'none';
     minimizeLocationsBtn.style.display = 'flex';
     debugPane.classList.remove('above-panel');
+    updateViewportForPanels();
   });
 
   // Click on Locations title to toggle
@@ -431,6 +460,7 @@ async function init() {
       maximizeLocationsBtn.style.display = 'flex';
       debugPane.classList.add('above-panel');
     }
+    updateViewportForPanels();
   });
 
   // Debug pane minimize/maximize
@@ -441,12 +471,14 @@ async function init() {
     if (locationsPanel.dataset.state === 'minimized') {
       debugPane.classList.add('above-panel');
     }
+    updateViewportForPanels();
   });
   maximizeDebugBtn?.addEventListener('click', () => {
     debugPane.dataset.state = 'maximized';
     maximizeDebugBtn.style.display = 'none';
     minimizeDebugBtn.style.display = 'flex';
     debugPane.classList.remove('above-panel');
+    updateViewportForPanels();
   });
 
   // Click on Debug title to toggle
@@ -492,11 +524,13 @@ async function init() {
     locationsPanel.style.display = e.target.checked ? 'flex' : 'none';
     locationsPanel.dataset.state = e.target.checked ? 'maximized' : 'minimized';
     localStorage.setItem('viewfinder:showLocations', e.target.checked);
+    updateViewportForPanels();
   });
   toggleDebugPane?.addEventListener('change', (e) => {
     debugPane.style.display = e.target.checked ? 'flex' : 'none';
     debugPane.dataset.state = e.target.checked ? 'maximized' : 'minimized';
     localStorage.setItem('viewfinder:showDebug', e.target.checked);
+    updateViewportForPanels();
   });
   toggleCompass?.addEventListener('change', (e) => {
     compassBtn.style.display = e.target.checked ? 'flex' : 'none';
@@ -626,6 +660,10 @@ async function init() {
     debugPane.dataset.state = 'minimized';
     toggleDebugPane.checked = false;
   }
+
+  // Initial viewport adjustment for panels
+  updateViewportForPanels();
+
   const showCompass = localStorage.getItem('viewfinder:showCompass');
   if (showCompass !== null) {
     const show = showCompass === 'true';

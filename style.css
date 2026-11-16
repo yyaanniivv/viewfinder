@@ -39,20 +39,31 @@ input, select, button {
   user-select: text;
 }
 
-/* Video - full screen camera feed */
-#camera {
+/* Camera viewport - fills screen minus bottom panels */
+.camera-viewport {
   position: fixed;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0; /* Will be adjusted by JS when panels are visible */
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+  overflow: hidden;
+}
+
+/* Video - full screen camera feed within viewport */
+#camera {
+  flex: 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
   z-index: 0;
 }
 
-/* Canvas overlay - full screen */
+/* Canvas overlay - full screen within viewport */
 #overlay {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
@@ -61,21 +72,36 @@ input, select, button {
   pointer-events: none;
 }
 
-/* Top bar */
+/* Top bar - GPS/Compass related */
 .top-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px;
   z-index: 10;
   pointer-events: none;
+  flex-shrink: 0;
 }
 
 .top-bar > * {
+  pointer-events: auto;
+}
+
+/* Bottom bar - Camera related controls */
+.bottom-bar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 16px;
+  z-index: 20;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.bottom-bar > * {
   pointer-events: auto;
 }
 
@@ -185,53 +211,6 @@ input, select, button {
   box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 4px rgba(78, 205, 196, 0.3);
 }
 
-/* Zoom controls - above camera button */
-.zoom-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 6px 10px;
-}
-
-/* Zoom indicator as clickable button to cycle levels */
-#zoom-indicator {
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--accent);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px 12px;
-  border-radius: 6px;
-  min-width: 44px;
-  text-align: center;
-  transition: background 0.15s, color 0.15s;
-}
-
-#zoom-indicator:active {
-  background: rgba(255,255,255,0.15);
-  color: var(--text);
-}
-
-/* Zoom dial (iOS-style drag to zoom) */
-.zoom-dial {
-  width: 100%;
-  max-width: 280px;
-  display: flex;
-  justify-content: center;
-}
-
-#zoom-dial-canvas {
-  width: 100%;
-  height: 80px;
-  touch-action: none;
-}
-
 /* Lens switch button - in camera controls */
 .lens-switch-btn {
   background: rgba(0, 0, 0, 0.6);
@@ -244,7 +223,6 @@ input, select, button {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 8px;
   transition: transform 0.1s, background 0.2s;
 }
 
@@ -256,25 +234,7 @@ input, select, button {
   background: rgba(255,255,255,0.15);
 }
 
-/* Camera controls container - bottom center */
-.camera-controls {
-  position: fixed;
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  z-index: 30;
-  pointer-events: none;
-}
-
-.camera-controls > * {
-  pointer-events: auto;
-}
-
-/* Camera controls row - shutter centered with side buttons */
+/* Camera controls row - lens switch + zoom indicator */
 .camera-controls-row {
   display: flex;
   align-items: center;
@@ -328,76 +288,6 @@ input, select, button {
 .camera-toggle-btn:not(.off) {
   border-color: var(--accent);
   box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 4px rgba(78, 205, 196, 0.3);
-}
-
-/* Lens switch button - in camera controls */
-.lens-switch-btn {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 8px 10px;
-  cursor: pointer;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.1s, background 0.2s;
-}
-
-.lens-switch-btn:active {
-  transform: scale(0.95);
-}
-
-.lens-switch-btn:hover {
-  background: rgba(255,255,255,0.15);
-}
-
-/* Zoom controls - side of camera button */
-.zoom-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 6px 10px;
-}
-
-/* Zoom indicator as clickable button to cycle levels */
-#zoom-indicator {
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--accent);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px 12px;
-  border-radius: 6px;
-  min-width: 44px;
-  text-align: center;
-  transition: background 0.15s, color 0.15s;
-}
-
-#zoom-indicator:active {
-  background: rgba(255,255,255,0.15);
-  color: var(--text);
-}
-
-/* Zoom dial (iOS-style drag to zoom) */
-.zoom-dial {
-  width: 100%;
-  max-width: 280px;
-  display: flex;
-  justify-content: center;
-}
-
-#zoom-dial-canvas {
-  width: 100%;
-  height: 80px;
-  touch-action: none;
 }
 
 /* Bearing display */
@@ -497,15 +387,15 @@ input, select, button {
 }
 
 /* Bottom panel container - stacked vertically (locations on top, debug below) */
-/* Positioned above camera controls (controls row ~72px + gap 8px + zoom dial 80px + margin 16px) */
+/* Positioned at bottom of viewport, below camera view */
 #bottom-panels {
   position: fixed;
-  bottom: calc(72px + 8px + 80px + 16px + env(safe-area-inset-bottom));
+  bottom: 0;
   left: 0;
   right: 0;
   display: flex;
   flex-direction: column;
-  z-index: 20;
+  z-index: 15;
   pointer-events: none;
 }
 
