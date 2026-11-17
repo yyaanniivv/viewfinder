@@ -14,6 +14,20 @@ let videoTrack = null;
 let currentDeviceId = null;
 let availableDevices = [];
 
+// Keywords that identify rear-facing cameras
+const REAR_CAMERA_KEYWORDS = [
+  'back',
+  'rear',
+  'environment',
+  'ultra wide',
+  'wide',
+  'telephoto',
+  'main',
+  'camera 1',
+  'camera 2',
+  'camera 3',
+];
+
 /**
  * Get available video input devices (cameras/lenses)
  * Returns array of { deviceId, label, kind }
@@ -29,16 +43,7 @@ export async function getAvailableCameras(rearOnly = false) {
       // Check device label for common rear camera identifiers
       filtered = filtered.filter(d => {
         const label = (d.label || '').toLowerCase();
-        return label.includes('back') ||
-               label.includes('rear') ||
-               label.includes('environment') ||
-               label.includes('ultra wide') ||
-               label.includes('wide') ||
-               label.includes('telephoto') ||
-               label.includes('main') ||
-               label.includes('camera 1') ||
-               label.includes('camera 2') ||
-               label.includes('camera 3');
+        return REAR_CAMERA_KEYWORDS.some(keyword => label.includes(keyword));
       });
 
       // If filtering results in empty, fall back to all video inputs
