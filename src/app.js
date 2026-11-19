@@ -41,6 +41,8 @@ const minimizeDebugBtn = document.getElementById('minimize-debug-btn');
 const maximizeDebugBtn = document.getElementById('maximize-debug-btn');
 const clearDebugBtn = document.getElementById('clear-debug-btn');
 
+const bottomPanels = document.getElementById('bottom-panels');
+
 const currentLocationOverlay = document.getElementById('current-location-overlay');
 const currentLocationCloseBtn = document.getElementById('current-location-close-btn');
 const currentLocationUseGpsBtn = document.getElementById('current-location-use-gps-btn');
