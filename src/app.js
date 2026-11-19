@@ -94,7 +94,6 @@ const zoomIndicator = document.getElementById('zoom-indicator');
 // Lens switch button
 const lensSwitchBtn = document.getElementById('lens-switch-btn');
 // Zoom settings
-const zoomLevelsSelect = document.getElementById('zoom-levels');
 const zoomGestureEnabledCheckbox = document.getElementById('zoom-gesture-enabled');
 const zoomButtonsEnabledCheckbox = document.getElementById('zoom-buttons-enabled');
 const zoomCycleEnabledCheckbox = document.getElementById('zoom-cycle-enabled');
@@ -938,15 +937,11 @@ async function toggleCamera() {
  * Setup zoom controls (buttons, pinch gesture, etc.)
  */
 function setupZoomControls() {
-  // Update available zoom levels from settings
-  const savedZoomLevels = localStorage.getItem('viewfinder:zoomLevels');
-  if (savedZoomLevels) {
-    const levels = savedZoomLevels.split(',').map(n => parseFloat(n)).filter(n => !isNaN(n));
-    if (levels.length > 0) {
-      availableZoomLevels = levels;
-      setAvailableZoomLevels(levels);
-    }
-  }
+  // Use fixed default zoom levels (1, 2, 5, 10)
+  // Device capabilities will clamp to hardware limits via getZoomCapabilities
+  const defaultLevels = [1, 2, 5, 10];
+  availableZoomLevels = defaultLevels;
+  setAvailableZoomLevels(defaultLevels);
 
   // Update zoom indicator
   currentZoomLevel = getCurrentZoom();
@@ -1042,29 +1037,6 @@ async function applyZoom(zoom) {
  * Setup zoom settings listeners
  */
 function setupZoomSettings() {
-  // Zoom levels select
-  if (zoomLevelsSelect) {
-    // Set current value
-    zoomLevelsSelect.value = availableZoomLevels.join(',');
-
-    zoomLevelsSelect.addEventListener('change', (e) => {
-      const levels = e.target.value.split(',').map(n => parseFloat(n)).filter(n => !isNaN(n));
-      if (levels.length > 0) {
-        availableZoomLevels = levels;
-        setAvailableZoomLevels(levels);
-        localStorage.setItem('viewfinder:zoomLevels', levels.join(','));
-
-        // If current zoom is not in new levels, reset to first
-        if (!availableZoomLevels.includes(currentZoomLevel)) {
-          currentZoomLevel = availableZoomLevels[0];
-          applyZoom(currentZoomLevel);
-        }
-        updateZoomIndicator();
-        debug(`Zoom levels updated: ${levels.join(', ')}×`);
-      }
-    });
-  }
-
   // Pinch gesture toggle
   if (zoomGestureEnabledCheckbox) {
     const saved = localStorage.getItem('viewfinder:zoomGestureEnabled');

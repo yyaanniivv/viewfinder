@@ -9,7 +9,6 @@ export const DEFAULT_ZOOM_LEVELS = [1, 2, 5, 10];
 // State for zoom management
 let currentZoomLevel = 1;
 let availableZoomLevels = [...DEFAULT_ZOOM_LEVELS];
-let userConfiguredZoomLevels = false; // Track if user has customized zoom levels
 let videoTrack = null;
 let currentDeviceId = null;
 let availableDevices = [];
@@ -127,12 +126,11 @@ export function getAvailableZoomLevels() {
 }
 
 /**
- * Set available zoom levels (can be customized by user)
+ * Set available zoom levels
  * @param {number[]} levels - Array of zoom levels (e.g., [1, 2, 5, 10])
  */
 export function setAvailableZoomLevels(levels) {
   availableZoomLevels = [...levels].sort((a, b) => a - b);
-  userConfiguredZoomLevels = true;
   // Ensure current zoom is valid
   if (!availableZoomLevels.includes(currentZoomLevel)) {
     currentZoomLevel = availableZoomLevels[0] || 1;
@@ -200,17 +198,17 @@ export async function startCamera(videoElement, options = {}) {
 
       // Get actual zoom capabilities
       const caps = await getZoomCapabilities(videoTrack);
-      if (caps.supportsZoom && !userConfiguredZoomLevels) {
-        // Update available zoom levels based on device capabilities (only if user hasn't customized)
+      if (caps.supportsZoom) {
+        // Update available zoom levels based on device capabilities
+        // Keep only levels that are <= max zoom, plus the max if not already included
         const maxZoom = Math.floor(caps.max);
-        const newLevels = [];
-        for (let z = 1; z <= maxZoom; z++) {
-          if (DEFAULT_ZOOM_LEVELS.includes(z) || z === maxZoom) {
-            newLevels.push(z);
-          }
+        const newLevels = DEFAULT_ZOOM_LEVELS.filter(z => z <= maxZoom);
+        if (!newLevels.includes(maxZoom) && maxZoom > 1) {
+          newLevels.push(maxZoom);
         }
         if (newLevels.length > 0) {
           availableZoomLevels = newLevels;
+          setAvailableZoomLevels(newLevels);
         }
       }
 
