@@ -260,12 +260,6 @@ function requestCompassPermission() {
 async function init() {
   console.log('[App] init() started');
 
-  // Cleanup any existing compass dial listeners from previous init
-  if (compassDialAbortController) {
-    compassDialAbortController.abort();
-    compassDialAbortController = null;
-  }
-
   // Clear debug
   clearDebugBtn?.addEventListener('click', () => {
     if (debugContent) debugContent.innerHTML = '';
