@@ -15,32 +15,134 @@
 <body>
   <!-- Version indicator (click for settings) -->
   <button id="version-badge" title="Settings">v1.0.0</button>
-  <!-- Camera feed -->
-  <video id="camera" autoplay playsinline muted style="display: none;"></video>
 
-  <!-- Canvas overlay for markers -->
-  <canvas id="overlay" aria-label="Horizon markers overlay"></canvas>
+  <!-- Main app container - full height, flex column -->
+  <div id="app-container" class="app-container">
+    <!-- Camera viewport - fills available space, contains camera + overlay + top/bottom bars -->
+    <div id="camera-viewport" class="camera-viewport">
+      <!-- Camera feed -->
+      <video id="camera" autoplay playsinline muted style="display: none;"></video>
 
-  <!-- Top bar: Compass + Bearing + Status + Camera Toggle -->
-  <div class="top-bar">
-    <button id="compass-btn" class="compass-btn" aria-label="Tap to calibrate compass">
-      <canvas id="compass-canvas" width="200" height="200"></canvas>
-    </button>
+      <!-- Canvas overlay for markers (lane logic in center) -->
+      <canvas id="overlay" aria-label="Horizon markers overlay"></canvas>
 
-    <!-- Bearing display - shows current heading -->
-    <div id="bearing-display" class="bearing-display" aria-label="Current heading">
-      <span id="bearing-cardinal" class="bearing-cardinal">—</span>
-      <span id="bearing-degrees" class="bearing-degrees">—°</span>
+      <!-- TOP BAR: GPS/Compass related (overlay on camera) -->
+      <div class="top-bar">
+        <button id="compass-btn" class="compass-btn" aria-label="Tap to calibrate compass">
+          <canvas id="compass-canvas" width="200" height="200"></canvas>
+        </button>
+
+        <!-- Bearing display - shows current heading -->
+        <div id="bearing-display" class="bearing-display" aria-label="Current heading">
+          <span id="bearing-cardinal" class="bearing-cardinal">—</span>
+          <span id="bearing-degrees" class="bearing-degrees">—°</span>
+        </div>
+
+        <div class="status-indicators">
+          <div id="status-gps" class="warn">📍 GPS: —</div>
+          <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
+        </div>
+      </div>
+
+      <!-- BOTTOM BAR: Camera related controls (overlay on camera) -->
+      <div class="bottom-bar">
+        <!-- Camera controls row (lens switch + spacer + zoom indicator) -->
+        <div class="camera-controls-row">
+          <!-- Camera/Lens switcher (left) -->
+          <button id="lens-switch-btn" class="lens-switch-btn camera-side-btn" style="display: none;" aria-label="Switch camera lens" title="Switch lens">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-left: 4px;">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+
+          <!-- Spacer for shutter button centering -->
+          <div class="shutter-spacer"></div>
+
+          <!-- Zoom indicator (click to cycle) - right -->
+          <button id="zoom-indicator" class="zoom-indicator camera-side-btn" style="display: none;" aria-label="Cycle zoom levels" title="Tap to cycle zoom (1×, 2×, 5×, 10×)">1×</button>
+        </div>
+
+        <!-- Camera toggle button - bottom center (shutter) -->
+        <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
+          📷
+        </button>
+      </div>
     </div>
 
-    <div class="status-indicators">
-      <div id="status-gps" class="warn">📍 GPS: —</div>
-      <div id="status-level" class="warn" style="display: none;">⚖️ Level</div>
-    </div>
+    <!-- Bottom Panels Container (Locations and Debug) - BELOW camera viewport, normal flow -->
+    <div id="bottom-panels">
+      <!-- Locations Panel (top) -->
+      <div id="locations-panel" class="panel" data-state="minimized">
+        <div class="panel-header">
+          <h3>Locations (<span id="location-count">0/0</span>)</h3>
+          <div class="panel-controls">
+            <button id="minimize-locations-btn" class="control-btn" aria-label="Minimize locations panel" title="Minimize" style="display: none;">−</button>
+            <button id="maximize-locations-btn" class="control-btn" aria-label="Maximize locations panel" title="Maximize">□</button>
+            <button id="add-location-btn" class="add-btn">+ Add</button>
+          </div>
+        </div>
 
-    <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
-      📷
-    </button>
+        <div class="panel-content">
+          <!-- Location Form -->
+          <div id="location-form-container" class="form-container" style="display: none;">
+            <form id="location-form">
+              <div class="field">
+                <label>Name</label>
+                <input type="text" id="loc-name" placeholder="Location name" required>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label>Latitude</label>
+                  <input type="number" step="any" id="loc-lat" placeholder="32.068444" required>
+                </div>
+                <div class="field">
+                  <label>Longitude</label>
+                  <input type="number" step="any" id="loc-lon" placeholder="34.784437" required>
+                </div>
+              </div>
+              <div class="field">
+                <label>Type</label>
+                <select id="loc-type">
+                  <option value="building">Building</option>
+                  <option value="landmark">Landmark</option>
+                  <option value="poi">Point of Interest</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Color</label>
+                <div id="loc-color-swatches" class="color-swatches" role="radiogroup" aria-label="Location color"></div>
+                <input type="hidden" id="loc-color" value="">
+              </div>
+              <div class="form-actions">
+                <button type="button" id="loc-cancel-btn" class="cancel-btn">Cancel</button>
+                <button type="submit" class="save-btn">Save</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Location List -->
+          <div id="location-list" class="location-list"></div>
+        </div>
+      </div>
+
+      <!-- Debug Pane (bottom) - same style as locations panel -->
+      <div id="debug-pane" class="panel debug-pane" data-state="minimized">
+        <div class="panel-header">
+          <h3>Debug</h3>
+          <div class="panel-controls">
+            <button id="minimize-debug-btn" class="control-btn" aria-label="Minimize debug pane" title="Minimize" style="display: none;">−</button>
+            <button id="maximize-debug-btn" class="control-btn" aria-label="Maximize debug pane" title="Maximize">□</button>
+            <button id="clear-debug-btn" class="control-btn" aria-label="Clear debug log" title="Clear">🗑</button>
+          </div>
+        </div>
+        <div id="debug-content" class="debug-content panel-content"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Settings Overlay -->
@@ -71,12 +173,6 @@
             <span>Compass Ring</span>
           </label>
         </div>
-        <div class="setting-row">
-          <label>
-            <input type="checkbox" id="toggle-camera-panel">
-            <span>Camera</span>
-          </label>
-        </div>
       </div>
 
       <div class="settings-section">
@@ -91,6 +187,24 @@
           <label>
             <input type="checkbox" id="camera-default-on">
             <span>Start Camera Automatically</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="zoom-gesture-enabled" checked>
+            <span>Pinch to Zoom</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="zoom-buttons-enabled" checked>
+            <span>Show Zoom Cycle</span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>
+            <input type="checkbox" id="zoom-cycle-enabled" checked>
+            <span>Show Camera Cycle Button</span>
           </label>
         </div>
       </div>
@@ -239,105 +353,20 @@
         <h2>Compass Calibration</h2>
         <button id="cal-close-btn" class="picker-close" aria-label="Close">×</button>
       </div>
-      <p class="picker-instruction">Select a visible location, point phone at it, tap Calibrate</p>
-
-      <div class="picker-field">
-        <label>Visible Location:</label>
-        <select id="cal-location-select"></select>
+      <div class="picker-instruction">
+        <p>Walk in a figure-8 pattern to calibrate the compass. The device will auto-calibrate when enough samples are collected.</p>
+        <p>Current status: <span id="cal-status" class="warn">Waiting for motion...</span></p>
+        <p>Samples: <span id="cal-samples">0</span> / <span id="cal-target">50</span></p>
       </div>
-
-      <div class="current-gps-status">
-        <div class="gps-stat">
-          <span class="gps-stat-label">Compass</span>
-          <span id="cal-compass" class="gps-stat-value">—</span>
-        </div>
-        <div class="gps-stat">
-          <span class="gps-stat-label">True Bearing</span>
-          <span id="cal-bearing" class="gps-stat-value">—</span>
-        </div>
-        <div class="gps-stat">
-          <span class="gps-stat-label">GPS</span>
-          <span id="cal-gps" class="gps-stat-value">Waiting...</span>
-        </div>
-      </div>
-
-      <div id="cal-result" class="picker-selected-info" style="display: none;"></div>
-
       <div class="picker-actions">
-        <button id="cal-cancel-btn" class="picker-btn secondary">Cancel</button>
         <button id="cal-calibrate-btn" class="picker-btn primary">Calibrate Now</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Bottom Panels Container (stacked vertically: locations on top, debug below) -->
-  <div id="bottom-panels">
-    <!-- Locations Panel (top) -->
-    <div id="locations-panel" class="panel" data-state="minimized">
-      <div class="panel-header">
-        <h3>Locations (<span id="location-count">0/0</span>)</h3>
-        <div class="panel-controls">
-          <button id="minimize-locations-btn" class="control-btn" aria-label="Minimize locations panel" title="Minimize" style="display: none;">−</button>
-          <button id="maximize-locations-btn" class="control-btn" aria-label="Maximize locations panel" title="Maximize">□</button>
-          <button id="add-location-btn" class="add-btn">+ Add</button>
-        </div>
+      <div id="cal-result" style="display: none; margin-top: 16px;">
+        <h4>Calibration Complete</h4>
+        <p>Offset: <span id="cal-offset">—</span>°</p>
+        <p>Accuracy: <span id="cal-accuracy" class="warn">—</span></p>
+        <button id="cal-apply-btn" class="picker-btn primary">Apply & Save</button>
       </div>
-
-      <div class="panel-content">
-        <!-- Location Form -->
-        <div id="location-form-container" class="form-container" style="display: none;">
-          <form id="location-form">
-            <div class="field">
-              <label>Name</label>
-              <input type="text" id="loc-name" placeholder="Location name" required>
-            </div>
-            <div class="field-row">
-              <div class="field">
-                <label>Latitude</label>
-                <input type="number" step="any" id="loc-lat" placeholder="32.068444" required>
-              </div>
-              <div class="field">
-                <label>Longitude</label>
-                <input type="number" step="any" id="loc-lon" placeholder="34.784437" required>
-              </div>
-            </div>
-            <div class="field">
-              <label>Type</label>
-              <select id="loc-type">
-                <option value="building">Building</option>
-                <option value="landmark">Landmark</option>
-                <option value="poi">Point of Interest</option>
-                <option value="custom">Custom</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Color</label>
-              <div id="loc-color-swatches" class="color-swatches" role="radiogroup" aria-label="Location color"></div>
-              <input type="hidden" id="loc-color" value="">
-            </div>
-            <div class="form-actions">
-              <button type="button" id="loc-cancel-btn" class="cancel-btn">Cancel</button>
-              <button type="submit" class="save-btn">Save</button>
-            </div>
-          </form>
-        </div>
-
-        <!-- Location List -->
-        <div id="location-list" class="location-list"></div>
-      </div>
-    </div>
-
-    <!-- Debug Pane (bottom) - same style as locations panel -->
-    <div id="debug-pane" class="panel debug-pane" data-state="minimized">
-      <div class="panel-header">
-        <h3>Debug</h3>
-        <div class="panel-controls">
-          <button id="minimize-debug-btn" class="control-btn" aria-label="Minimize debug pane" title="Minimize" style="display: none;">−</button>
-          <button id="maximize-debug-btn" class="control-btn" aria-label="Maximize debug pane" title="Maximize">□</button>
-          <button id="clear-debug-btn" class="control-btn" aria-label="Clear debug log" title="Clear">🗑</button>
-        </div>
-      </div>
-      <div id="debug-content" class="debug-content panel-content"></div>
     </div>
   </div>
 

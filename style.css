@@ -18,6 +18,7 @@
   --danger: #FF6B6B;
   --border: rgba(255,255,255,0.1);
   --border-strong: rgba(255,255,255,0.2);
+  --shutter-size: 72px;
 }
 
 html, body {
@@ -39,20 +40,39 @@ input, select, button {
   user-select: text;
 }
 
-/* Video - full screen camera feed */
+/* Main app container - full height flex column */
+.app-container {
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile */
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* Camera viewport - fills available space, contains camera + overlay + top/bottom bars */
+.camera-viewport {
+  flex: 1 1 auto; /* Allow shrinking to accommodate bottom panels */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+  overflow: hidden;
+  background: var(--bg);
+  min-height: 0; /* Allow shrinking below content size */
+}
+
+/* Video - full screen camera feed within viewport */
 #camera {
-  position: fixed;
-  top: 0;
-  left: 0;
+  flex: 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
   z-index: 0;
 }
 
-/* Canvas overlay - full screen */
+/* Canvas overlay - full screen within viewport */
 #overlay {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
@@ -61,21 +81,42 @@ input, select, button {
   pointer-events: none;
 }
 
-/* Top bar */
+/* Top bar - GPS/Compass related (overlay on camera) */
 .top-bar {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 16px;
   z-index: 10;
   pointer-events: none;
+  flex-shrink: 0;
 }
 
 .top-bar > * {
+  pointer-events: auto;
+}
+
+/* Bottom bar - Camera related controls (overlay on camera) */
+.bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.bottom-bar > * {
   pointer-events: auto;
 }
 
@@ -136,28 +177,115 @@ input, select, button {
   border-color: rgba(255, 190, 11, 0.3);
 }
 
-/* Camera toggle button */
-.camera-toggle-btn {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 20px;
+/* Camera controls row - lens switch | shutter | zoom indicator */
+.camera-controls-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.1s, background 0.2s;
+  gap: 16px;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Side buttons (lens switch, zoom indicator) */
+.camera-side-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Spacer to center shutter button */
+.shutter-spacer {
+  flex: 1 1 auto;
+  min-width: var(--shutter-size);
+}
+
+/* Camera toggle button - center (shutter style) */
+.camera-toggle-btn {
+  width: var(--shutter-size);
+  height: var(--shutter-size);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 4px solid var(--border);
+  cursor: pointer;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.1s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 .camera-toggle-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.9);
 }
 
 .camera-toggle-btn.off {
   background: rgba(255, 107, 107, 0.3);
   border-color: rgba(255, 107, 107, 0.5);
+}
+
+.camera-toggle-btn:not(.off) {
+  border-color: var(--accent);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 4px rgba(78, 205, 196, 0.3);
+}
+
+/* Lens switch button */
+.lens-switch-btn {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.lens-switch-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.lens-switch-btn:active {
+  transform: scale(0.95);
+}
+
+.lens-switch-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+/* Zoom indicator (bottom bar) - styled like GPS status */
+.zoom-indicator {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: var(--accent);
+  border-color: rgba(78, 205, 196, 0.3);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+.zoom-indicator:active {
+  transform: scale(0.95);
+  background: rgba(255,255,255,0.15);
+}
+
+.zoom-indicator:hover {
+  background: rgba(255,255,255,0.1);
 }
 
 /* Bearing display */
@@ -256,16 +384,13 @@ input, select, button {
   color: var(--text-dim);
 }
 
-/* Bottom panel container - stacked vertically (locations on top, debug below) */
+/* Bottom Panels Container - normal flow, below camera viewport */
 #bottom-panels {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
   display: flex;
   flex-direction: column;
-  z-index: 20;
+  z-index: 10;
   pointer-events: none;
+  background: transparent;
 }
 
 #bottom-panels > * {
@@ -905,6 +1030,20 @@ select {
   animation: slideDown 0.3s ease-out;
 }
 
+.info-toast {
+  position: fixed;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  background: rgba(78, 205, 196, 0.9);
+  color: white;
+  border-radius: 8px;
+  font-weight: 500;
+  z-index: 60;
+  animation: slideDown 0.3s ease-out;
+}
+
 @keyframes slideDown {
   from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -916,6 +1055,10 @@ select {
     padding-top: max(16px, env(safe-area-inset-top));
     padding-left: max(16px, env(safe-area-inset-left));
     padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .bottom-bar {
+    padding-bottom: max(16px, calc(16px + env(safe-area-inset-bottom)));
   }
 
   #locations-panel {
