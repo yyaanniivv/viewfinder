@@ -105,7 +105,6 @@ let compassDialStartOffset = 0;
 let compassPermissionRequested = false;
 let compassModule = null;
 let gpsModule = null;
-// AbortController for compass dial listeners cleanup
 let compassDialAbortController = null;
 
 // State
