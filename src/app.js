@@ -156,20 +156,6 @@ function updateViewportForPanels() {
     panelsVisible = panelsVisibleNow;
     debug(`Panels visibility changed: ${panelsVisible}`);
   }
-
-  // Update border-radius based on visible panels
-  const panels = [locationsPanel, debugPane].filter(p => p.style.display !== 'none');
-  panels.forEach((panel, i) => {
-    if (panels.length === 1) {
-      panel.style.borderRadius = '16px';
-    } else if (i === 0) {
-      panel.style.borderRadius = '16px 16px 0 0';
-    } else if (i === panels.length - 1) {
-      panel.style.borderRadius = '0 0 16px 16px';
-    } else {
-      panel.style.borderRadius = '0';
-    }
-  });
 }
 
 function handleCompassDialStart(e) {
