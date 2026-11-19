@@ -399,7 +399,6 @@ input, select, button {
   width: 100%;
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
-  border-radius: 16px 16px 0 0;
   max-height: 40vh;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   display: flex;
@@ -427,11 +426,16 @@ input, select, button {
   font-size: 14px;
 }
 
-#locations-panel[data-state="minimized"] {
+/* Border-radius based on visible panel count */
+#bottom-panels[data-visible-panels="1"] .panel:not([style*="display: none"]) {
+  border-radius: 16px;
+}
+
+#bottom-panels[data-visible-panels="2"] .panel:not([style*="display: none"]):first-of-type {
   border-radius: 16px 16px 0 0;
 }
 
-.debug-pane[data-state="minimized"] {
+#bottom-panels[data-visible-panels="2"] .panel:not([style*="display: none"]):last-of-type {
   border-radius: 0 0 16px 16px;
 }
 
@@ -464,7 +468,6 @@ input, select, button {
   width: 100%;
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
-  border-radius: 0 0 16px 16px;
   max-height: 20vh;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   display: flex;

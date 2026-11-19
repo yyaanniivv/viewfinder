@@ -156,6 +156,10 @@ function updateViewportForPanels() {
     panelsVisible = panelsVisibleNow;
     debug(`Panels visibility changed: ${panelsVisible}`);
   }
+
+  // Update container data attribute for CSS border-radius styling
+  const visibleCount = (locationsVisible ? 1 : 0) + (debugVisible ? 1 : 0);
+  bottomPanels.dataset.visiblePanels = visibleCount;
 }
 
 function handleCompassDialStart(e) {
