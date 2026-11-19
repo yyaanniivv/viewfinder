@@ -90,7 +90,6 @@ const gpsRateValue = document.getElementById('gps-rate-value');
 const calibrationOverlay = document.getElementById('calibration-overlay');
 
 // Zoom controls
-const zoomControls = document.getElementById('zoom-controls');
 const zoomIndicator = document.getElementById('zoom-indicator');
 // Lens switch button
 const lensSwitchBtn = document.getElementById('lens-switch-btn');
@@ -953,10 +952,10 @@ function setupZoomControls() {
   currentZoomLevel = getCurrentZoom();
   updateZoomIndicator();
 
-  // Show/hide zoom controls based on settings
+  // Show/hide zoom indicator based on settings
   const zoomButtonsEnabled = localStorage.getItem('viewfinder:zoomButtonsEnabled') !== 'false';
-  if (zoomButtonsEnabled && zoomControls) {
-    zoomControls.style.display = 'flex';
+  if (zoomButtonsEnabled && zoomIndicator) {
+    zoomIndicator.style.display = 'flex';
   }
 
   // Setup zoom indicator click to cycle (controlled by zoomCycleEnabled setting)
@@ -987,8 +986,8 @@ function setupZoomControls() {
  * Cleanup zoom controls
  */
 function cleanupZoomControls() {
-  if (zoomControls) {
-    zoomControls.style.display = 'none';
+  if (zoomIndicator) {
+    zoomIndicator.style.display = 'none';
   }
   if (pinchZoomCleanup) {
     pinchZoomCleanup();
@@ -1099,8 +1098,8 @@ function setupZoomSettings() {
       const enabled = e.target.checked;
       localStorage.setItem('viewfinder:zoomButtonsEnabled', enabled);
 
-      if (zoomControls) {
-        zoomControls.style.display = enabled && cameraEnabled ? 'flex' : 'none';
+      if (zoomIndicator) {
+        zoomIndicator.style.display = enabled && cameraEnabled ? 'flex' : 'none';
       }
       debug(`Zoom indicator ${enabled ? 'shown' : 'hidden'}`);
     });
