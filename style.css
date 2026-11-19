@@ -219,6 +219,12 @@ input, select, button {
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
+.camera-toggle-btn svg {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
 .camera-toggle-btn:active {
   transform: scale(0.9);
 }
@@ -410,27 +416,6 @@ input, select, button {
   transition: max-height 0.3s ease, border-radius 0.3s ease;
 }
 
-#locations-panel[data-state="minimized"] {
-  max-height: 42px;
-  border-radius: 16px 16px 0 0;
-}
-
-#locations-panel[data-state="minimized"] .panel-content {
-  display: none;
-}
-
-#locations-panel[data-state="minimized"] .add-btn {
-  display: none;
-}
-
-#locations-panel[data-state="minimized"] #maximize-locations-btn {
-  display: flex !important;
-}
-
-#locations-panel[data-state="minimized"] #minimize-locations-btn {
-  display: none !important;
-}
-
 .panel[data-state="minimized"] {
   max-height: 42px;
 }
@@ -449,6 +434,28 @@ input, select, button {
 
 .panel[data-state="minimized"] .panel-header h3 {
   font-size: 14px;
+}
+
+/* Panel-specific border-radius when minimized */
+#locations-panel[data-state="minimized"] {
+  border-radius: 16px 16px 0 0;
+}
+
+.debug-pane[data-state="minimized"] {
+  border-radius: 0 0 16px 16px;
+}
+
+/* Panel-specific button visibility when minimized */
+#locations-panel[data-state="minimized"] #maximize-locations-btn {
+  display: flex !important;
+}
+
+#locations-panel[data-state="minimized"] #minimize-locations-btn {
+  display: none !important;
+}
+
+.debug-pane[data-state="minimized"] #maximize-debug-btn {
+  display: flex !important;
 }
 
 .panel[data-state="maximized"] .panel-header {
@@ -475,18 +482,6 @@ input, select, button {
   display: flex;
   flex-direction: column;
   transition: max-height 0.3s ease, border-radius 0.3s ease;
-}
-
-.debug-pane[data-state="minimized"] {
-  border-radius: 0 0 16px 16px;
-}
-
-.debug-pane[data-state="minimized"] #maximize-debug-btn {
-  display: flex !important;
-}
-
-.debug-pane[data-state="minimized"] #minimize-debug-btn {
-  display: none !important;
 }
 
 .control-btn {

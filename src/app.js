@@ -105,6 +105,8 @@ let compassDialStartOffset = 0;
 let compassPermissionRequested = false;
 let compassModule = null;
 let gpsModule = null;
+// AbortController for compass dial listeners cleanup
+let compassDialAbortController = null;
 
 // State
 let userPosition = null;
@@ -258,6 +260,12 @@ function requestCompassPermission() {
 async function init() {
   console.log('[App] init() started');
 
+  // Cleanup any existing compass dial listeners from previous init
+  if (compassDialAbortController) {
+    compassDialAbortController.abort();
+    compassDialAbortController = null;
+  }
+
   // Clear debug
   clearDebugBtn?.addEventListener('click', () => {
     if (debugContent) debugContent.innerHTML = '';
@@ -405,15 +413,19 @@ async function init() {
 
   // Compass dial interaction (rotate to adjust heading offset)
   if (compassCanvas) {
+    // Create AbortController for cleanup
+    compassDialAbortController = new AbortController();
+    const { signal } = compassDialAbortController;
+
     // Mouse events
-    compassCanvas.addEventListener('mousedown', handleCompassDialStart);
-    window.addEventListener('mousemove', handleCompassDialMove);
-    window.addEventListener('mouseup', handleCompassDialEnd);
+    compassCanvas.addEventListener('mousedown', handleCompassDialStart, { signal });
+    window.addEventListener('mousemove', handleCompassDialMove, { signal });
+    window.addEventListener('mouseup', handleCompassDialEnd, { signal });
 
     // Touch events for mobile
-    compassCanvas.addEventListener('touchstart', handleCompassDialStart, { passive: false });
-    window.addEventListener('touchmove', handleCompassDialMove, { passive: false });
-    window.addEventListener('touchend', handleCompassDialEnd);
+    compassCanvas.addEventListener('touchstart', handleCompassDialStart, { signal, passive: false });
+    window.addEventListener('touchmove', handleCompassDialMove, { signal, passive: false });
+    window.addEventListener('touchend', handleCompassDialEnd, { signal });
   }
 
   // Panel minimize/maximize
@@ -897,9 +909,13 @@ async function toggleCamera() {
       debug('Starting camera...');
       cameraStream = await startCamera(video, { zoom: currentZoomLevel });
       video.style.display = 'block';
-      cameraToggleBtn.textContent = '📷';
+      // Show camera-on icon, hide camera-off icon
+      cameraToggleBtn.querySelector('.camera-icon-off').style.display = 'none';
+      cameraToggleBtn.querySelector('.camera-icon-on').style.display = 'block';
       cameraToggleBtn.classList.remove('off');
       cameraToggleBtn.title = 'Turn off camera';
+      cameraToggleBtn.setAttribute('aria-pressed', 'true');
+      cameraToggleBtn.setAttribute('aria-label', 'Turn off camera');
       cameraEnabled = true;
       localStorage.setItem('viewfinder:cameraEnabled', true);
       debug('Camera started');
@@ -919,9 +935,13 @@ async function toggleCamera() {
       cameraStream = null;
     }
     video.style.display = 'none';
-    cameraToggleBtn.textContent = '📷';
+    // Show camera-off icon, hide camera-on icon
+    cameraToggleBtn.querySelector('.camera-icon-off').style.display = 'block';
+    cameraToggleBtn.querySelector('.camera-icon-on').style.display = 'none';
     cameraToggleBtn.classList.add('off');
     cameraToggleBtn.title = 'Turn on camera';
+    cameraToggleBtn.setAttribute('aria-pressed', 'false');
+    cameraToggleBtn.setAttribute('aria-label', 'Turn on camera');
     cameraEnabled = false;
     localStorage.setItem('viewfinder:cameraEnabled', false);
     debug('Camera stopped');
