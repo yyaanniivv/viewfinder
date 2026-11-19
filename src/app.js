@@ -560,7 +560,6 @@ async function init() {
   });
 
   const clearStorageBtn = document.getElementById('clear-storage-btn');
-  const clearStorageBtn = document.getElementById('clear-storage-btn');
   clearStorageBtn?.addEventListener('click', () => {
     if (confirm('Clear all stored data? This will reset locations, settings, and calibration.')) {
       localStorage.clear();
