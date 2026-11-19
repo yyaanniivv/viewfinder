@@ -195,13 +195,11 @@ input, select, button {
   justify-content: center;
 }
 
-/* Spacer to center shutter button */
 .shutter-spacer {
   flex: 1 1 auto;
   min-width: var(--shutter-size);
 }
 
-/* Camera toggle button - center (shutter style) */
 .camera-toggle-btn {
   width: var(--shutter-size);
   height: var(--shutter-size);
@@ -217,6 +215,12 @@ input, select, button {
   flex-shrink: 0;
   transition: transform 0.1s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.camera-toggle-btn svg {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
 }
 
 .camera-toggle-btn:active {
@@ -263,7 +267,6 @@ input, select, button {
   background: rgba(255,255,255,0.15);
 }
 
-/* Zoom indicator (bottom bar) - styled like GPS status */
 .zoom-indicator {
   padding: 6px 12px;
   font-size: 12px;
@@ -288,7 +291,6 @@ input, select, button {
   background: rgba(255,255,255,0.1);
 }
 
-/* Bearing display */
 .bearing-display {
   display: flex;
   align-items: center;
@@ -316,8 +318,6 @@ input, select, button {
 .bearing-degrees {
   color: var(--text-dim);
 }
-
-/* Settings Overlay */
 .settings-section {
   margin-bottom: 20px;
 }
@@ -359,7 +359,6 @@ input, select, button {
   cursor: pointer;
 }
 
-/* Version badge (top-right, click to open settings) */
 #version-badge {
   position: fixed;
   top: calc(env(safe-area-inset-top, 8px) + 4px);
@@ -384,7 +383,6 @@ input, select, button {
   color: var(--text-dim);
 }
 
-/* Bottom Panels Container - normal flow, below camera viewport */
 #bottom-panels {
   display: flex;
   flex-direction: column;
@@ -397,38 +395,15 @@ input, select, button {
   pointer-events: auto;
 }
 
-/* Panel (locations panel - top) */
 #locations-panel {
   width: 100%;
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
-  border-radius: 16px 16px 0 0;
   max-height: 40vh;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   display: flex;
   flex-direction: column;
   transition: max-height 0.3s ease, border-radius 0.3s ease;
-}
-
-#locations-panel[data-state="minimized"] {
-  max-height: 42px;
-  border-radius: 16px 16px 0 0;
-}
-
-#locations-panel[data-state="minimized"] .panel-content {
-  display: none;
-}
-
-#locations-panel[data-state="minimized"] .add-btn {
-  display: none;
-}
-
-#locations-panel[data-state="minimized"] #maximize-locations-btn {
-  display: flex !important;
-}
-
-#locations-panel[data-state="minimized"] #minimize-locations-btn {
-  display: none !important;
 }
 
 .panel[data-state="minimized"] {
@@ -451,6 +426,32 @@ input, select, button {
   font-size: 14px;
 }
 
+/* Border-radius based on visible panel count */
+#bottom-panels[data-visible-panels="1"] #locations-panel:not([style*="display: none"]),
+#bottom-panels[data-visible-panels="1"] .debug-pane:not([style*="display: none"]) {
+  border-radius: 16px;
+}
+
+#bottom-panels[data-visible-panels="2"] #locations-panel:not([style*="display: none"]) {
+  border-radius: 16px 16px 0 0;
+}
+
+#bottom-panels[data-visible-panels="2"] .debug-pane:not([style*="display: none"]) {
+  border-radius: 0 0 16px 16px;
+}
+
+#locations-panel[data-state="minimized"] #maximize-locations-btn {
+  display: flex !important;
+}
+
+#locations-panel[data-state="minimized"] #minimize-locations-btn {
+  display: none !important;
+}
+
+.debug-pane[data-state="minimized"] #maximize-debug-btn {
+  display: flex !important;
+}
+
 .panel[data-state="maximized"] .panel-header {
   padding: 8px 16px;
 }
@@ -464,29 +465,15 @@ input, select, button {
   user-select: none;
 }
 
-/* Debug pane (bottom) - same style as locations panel */
 .debug-pane {
   width: 100%;
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
-  border-radius: 0 0 16px 16px;
   max-height: 20vh;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   display: flex;
   flex-direction: column;
   transition: max-height 0.3s ease, border-radius 0.3s ease;
-}
-
-.debug-pane[data-state="minimized"] {
-  border-radius: 0 0 16px 16px;
-}
-
-.debug-pane[data-state="minimized"] #maximize-debug-btn {
-  display: flex !important;
-}
-
-.debug-pane[data-state="minimized"] #minimize-debug-btn {
-  display: none !important;
 }
 
 .control-btn {
