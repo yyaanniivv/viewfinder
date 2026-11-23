@@ -1764,16 +1764,8 @@ function drawFixedWheel(centerX, centerY, radius, heading) {
     compassCtx.stroke();
   }
 
-  // North indicator (fixed red triangle at top)
-  compassCtx.fillStyle = '#FF6B6B';
-  compassCtx.beginPath();
-  compassCtx.moveTo(centerX, centerY - radius + 5);
-  compassCtx.lineTo(centerX - 6, centerY - radius + 16);
-  compassCtx.lineTo(centerX + 6, centerY - radius + 16);
-  compassCtx.closePath();
-  compassCtx.fill();
-
   // Heading pointer (rotates to show current heading)
+  // No fixed red triangle at N - the pointer IS the indicator
   compassCtx.save();
   compassCtx.translate(centerX, centerY);
   // Rotate to heading: 0° = North (up), so we rotate by heading degrees clockwise
@@ -1843,7 +1835,8 @@ function drawDynamicWheel(centerX, centerY, radius, heading) {
     compassCtx.stroke();
   }
 
-  // North indicator (red triangle at top - this IS the pointer in dynamic mode)
+  // Fixed pointer at top (red dot/triangle) - always points to top of screen
+  // This shows "you are here" - the device orientation relative to the wheel
   compassCtx.fillStyle = '#FF6B6B';
   compassCtx.beginPath();
   compassCtx.moveTo(0, -radius + 5);

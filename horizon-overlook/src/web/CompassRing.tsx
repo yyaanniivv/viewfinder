@@ -227,16 +227,8 @@ function drawFixedWheel(
     ctx.stroke();
   }
 
-  // North indicator (fixed red triangle at top)
-  ctx.fillStyle = '#FF6B6B';
-  ctx.beginPath();
-  ctx.moveTo(centerX, centerY - radius + 5);
-  ctx.lineTo(centerX - 8, centerY - radius + 20);
-  ctx.lineTo(centerX + 8, centerY - radius + 20);
-  ctx.closePath();
-  ctx.fill();
-
   // Heading pointer (rotates to show current heading)
+  // No fixed red triangle at N - the pointer IS the indicator
   ctx.save();
   ctx.translate(centerX, centerY);
   // Rotate to heading: 0° = North (up), so we rotate by heading degrees clockwise
@@ -313,7 +305,8 @@ function drawDynamicWheel(
     ctx.stroke();
   }
 
-  // North indicator (red triangle at top - this IS the pointer in dynamic mode)
+  // Fixed pointer at top (red triangle) - always points to top of screen
+  // This shows "you are here" - the device orientation relative to the wheel
   ctx.fillStyle = '#FF6B6B';
   ctx.beginPath();
   ctx.moveTo(0, -radius + 5);
