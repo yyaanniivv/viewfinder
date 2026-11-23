@@ -26,6 +26,7 @@ import { getLocations, saveLocations, SAMPLE_LOCATIONS, createLocation, generate
 import { loadCalibration, saveCalibration, computeHeadingOffset, hasValidCalibration } from './calibration.js';
 import { normalizeBearing, formatDistance, haversineDistance, bearing } from './geo.js';
 import { loadSettings, updateSetting, getSetting } from './settings.js';
+import { initSettingsUI } from './settings-ui.js';
 
 const video = document.getElementById('camera');
 const canvas = document.getElementById('overlay');
@@ -314,6 +315,61 @@ async function init() {
       debug('Compass init failed: ' + err.message);
     });
 
+  // Initialize settings UI
+  const state = {
+    cameraEnabled,
+    cameraDefaultOn: cameraDefaultOnCheckbox?.checked || false,
+    compassDirection,
+    compassRate,
+    compassZeroOffset,
+    compassAutoCalibrate: compassAutoCalibrateCheckbox?.checked || false,
+    levelIndicatorEnabled,
+    levelTagEnabled,
+    laneModeEnabled,
+    cleanWheelEnabled,
+    compassMode,
+    compassModule: null,
+    gpsModule: null,
+    onCameraToggle: (enabled) => {
+      cameraEnabled = enabled;
+      if (enabled && !cameraEnabled) {
+        toggleCamera();
+      } else if (!enabled && cameraEnabled) {
+        toggleCamera();
+      }
+    },
+    onLevelTagChange: () => {
+      updateStatus();
+    },
+  };
+
+  const settingsUI = initSettingsUI({
+    settingsBtn,
+    settingsOverlay,
+    settingsCloseBtn,
+    settingsVersion,
+    versionBadge,
+    debug,
+    updateViewportForPanels,
+    state,
+  });
+
+  // Sync modules with state after they're initialized
+  const originalCompassModule = compassModule;
+  const originalGpsModule = gpsModule;
+  Object.defineProperty(state, 'compassModule', {
+    get() { return compassModule; },
+    set(v) { compassModule = v; }
+  });
+  Object.defineProperty(state, 'gpsModule', {
+    get() { return gpsModule; },
+    set(v) { gpsModule = v; }
+  });
+  Object.defineProperty(state, 'cameraEnabled', {
+    get() { return cameraEnabled; },
+    set(v) { cameraEnabled = v; }
+  });
+
   try {
     const gpsRate = parseInt(gpsRateSlider?.value || '10000');
     debug('Starting GPS...');
@@ -474,285 +530,8 @@ async function init() {
     updateViewportForPanels();
   });
 
-  settingsBtn?.addEventListener('click', () => {
-    settingsOverlay.style.display = 'flex';
-    toggleLocationsPanel.checked = locationsPanel.style.display !== 'none';
-    toggleDebugPane.checked = debugPane.style.display !== 'none';
-    toggleCompass.checked = compassBtn.style.display !== 'none';
-    cameraEnabledCheckbox.checked = cameraEnabled;
-  });
-  settingsCloseBtn?.addEventListener('click', () => {
-    settingsOverlay.style.display = 'none';
-  });
-
-  settingsOverlay?.addEventListener('click', (e) => {
-    if (e.target === settingsOverlay) {
-      settingsOverlay.style.display = 'none';
-    }
-  });
-  toggleLocationsPanel?.addEventListener('change', (e) => {
-    locationsPanel.style.display = e.target.checked ? 'flex' : 'none';
-    locationsPanel.dataset.state = e.target.checked ? 'maximized' : 'minimized';
-    if (e.target.checked) {
-      minimizeLocationsBtn.style.display = 'flex';
-      maximizeLocationsBtn.style.display = 'none';
-    } else {
-      minimizeLocationsBtn.style.display = 'none';
-      maximizeLocationsBtn.style.display = 'flex';
-    }
-    localStorage.setItem('viewfinder:showLocations', e.target.checked);
-    updateViewportForPanels();
-  });
-  toggleDebugPane?.addEventListener('change', (e) => {
-    debugPane.style.display = e.target.checked ? 'flex' : 'none';
-    debugPane.dataset.state = e.target.checked ? 'maximized' : 'minimized';
-    // Sync minimize/maximize buttons with panel state
-    if (e.target.checked) {
-      minimizeDebugBtn.style.display = 'flex';
-      maximizeDebugBtn.style.display = 'none';
-    } else {
-      minimizeDebugBtn.style.display = 'none';
-      maximizeDebugBtn.style.display = 'flex';
-    }
-    localStorage.setItem('viewfinder:showDebug', e.target.checked);
-    updateViewportForPanels();
-  });
-  toggleCompass?.addEventListener('change', (e) => {
-    compassBtn.style.display = e.target.checked ? 'flex' : 'none';
-    localStorage.setItem('viewfinder:showCompass', e.target.checked);
-  });
-
-  // Settings checkboxes
-  cameraEnabledCheckbox?.addEventListener('change', (e) => {
-    const enabled = e.target.checked;
-    localStorage.setItem('viewfinder:cameraEnabled', enabled);
-    if (enabled && !cameraEnabled) {
-      toggleCamera();
-    } else if (!enabled && cameraEnabled) {
-      toggleCamera();
-    }
-  });
-  cameraDefaultOnCheckbox?.addEventListener('change', (e) => {
-    localStorage.setItem('viewfinder:cameraDefaultOn', e.target.checked);
-  });
-
-  compassInvertCheckbox?.addEventListener('change', (e) => {
-    compassDirection = e.target.checked ? -1 : 1;
-    localStorage.setItem('viewfinder:compassInvert', e.target.checked);
-    debug(`Compass direction: ${compassDirection === -1 ? 'inverted' : 'normal'}`);
-  });
-  compassRateSlider?.addEventListener('input', (e) => {
-    const rate = parseInt(e.target.value);
-    compassRateValue.textContent = `${rate}ms`;
-    localStorage.setItem('viewfinder:compassRate', rate);
-    if (compassModule && compassModule.setUpdateRate) {
-      compassModule.setUpdateRate(rate);
-    }
-    debug(`Compass update rate: ${rate}ms`);
-  });
-  compassZeroOffsetInput?.addEventListener('input', (e) => {
-    let offset = parseInt(e.target.value);
-    if (isNaN(offset)) offset = 0;
-    if (offset < 0) offset = 0;
-    if (offset > 359) offset = 359;
-    e.target.value = offset;
-    compassZeroOffset = offset;
-    localStorage.setItem('viewfinder:compassZeroOffset', offset);
-    debug(`Compass zero offset: ${offset}°`);
-  });
-  compassAutoCalibrateCheckbox?.addEventListener('change', (e) => {
-    localStorage.setItem('viewfinder:compassAutoCalibrate', e.target.checked);
-    debug(`Compass auto-calibrate: ${e.target.checked ? 'on' : 'off'}`);
-  });
-
-  // Compass mode toggle
-  const compassModeSelect = document.getElementById('compass-mode-select');
-  if (compassModeSelect) {
-    compassModeSelect.value = compassMode;
-    compassModeSelect.addEventListener('change', (e) => {
-      compassMode = e.target.value;
-      updateSetting('compassMode', compassMode);
-      debug(`Compass mode: ${compassMode}`);
-    });
-  }
-
-  levelIndicatorToggle?.addEventListener('change', (e) => {
-    levelIndicatorEnabled = e.target.checked;
-    localStorage.setItem('viewfinder:levelIndicator', levelIndicatorEnabled);
-    debug(`Level indicator: ${levelIndicatorEnabled ? 'on' : 'off'}`);
-  });
-
-  levelTagToggle?.addEventListener('change', (e) => {
-    levelTagEnabled = e.target.checked;
-    localStorage.setItem('viewfinder:levelTag', levelTagEnabled);
-    updateStatus();
-    debug(`Level tag: ${levelTagEnabled ? 'on' : 'off'}`);
-  });
-
-  laneModeToggle?.addEventListener('change', (e) => {
-    laneModeEnabled = e.target.checked;
-    localStorage.setItem('viewfinder:laneMode', laneModeEnabled);
-    debug(`Lane markers: ${laneModeEnabled ? 'on' : 'off'}`);
-  });
-
-  cleanWheelToggle?.addEventListener('change', (e) => {
-    cleanWheelEnabled = e.target.checked;
-    localStorage.setItem('viewfinder:cleanWheel', cleanWheelEnabled);
-    debug(`Clean wheel: ${cleanWheelEnabled ? 'on' : 'off'}`);
-  });
-
-  gpsRateSlider?.addEventListener('input', (e) => {
-    const rateMs = parseInt(e.target.value);
-    gpsRateValue.textContent = `${rateMs / 1000}s`;
-    localStorage.setItem('viewfinder:gpsRate', rateMs);
-    if (gpsModule && gpsModule.setUpdateRate) {
-      gpsModule.setUpdateRate(rateMs);
-    }
-    debug(`GPS update rate: ${rateMs / 1000}s`);
-  });
-
-  const clearStorageBtn = document.getElementById('clear-storage-btn');
-  clearStorageBtn?.addEventListener('click', () => {
-    if (confirm('Clear all stored data? This will reset locations, settings, and calibration.')) {
-      localStorage.clear();
-      debug('All localStorage cleared');
-      location.reload();
-    }
-  });
-
-  const showLocations = localStorage.getItem('viewfinder:showLocations');
-  if (showLocations !== null) {
-    const show = showLocations === 'true';
-    locationsPanel.style.display = show ? 'flex' : 'none';
-    locationsPanel.dataset.state = show ? 'maximized' : 'minimized';
-    toggleLocationsPanel.checked = show;
-  } else {
-    locationsPanel.style.display = 'flex';
-    locationsPanel.dataset.state = 'minimized';
-    toggleLocationsPanel.checked = false;
-  }
-  const showDebug = localStorage.getItem('viewfinder:showDebug');
-  if (showDebug !== null) {
-    const show = showDebug === 'true';
-    debugPane.style.display = show ? 'flex' : 'none';
-    debugPane.dataset.state = show ? 'maximized' : 'minimized';
-    toggleDebugPane.checked = show;
-  } else {
-    debugPane.style.display = 'flex';
-    debugPane.dataset.state = 'minimized';
-    toggleDebugPane.checked = false;
-  }
-
-  updateViewportForPanels();
-
-  const showCompass = localStorage.getItem('viewfinder:showCompass');
-  if (showCompass !== null) {
-    const show = showCompass === 'true';
-    compassBtn.style.display = show ? 'flex' : 'none';
-    toggleCompass.checked = show;
-  } else {
-    compassBtn.style.display = 'flex';
-    toggleCompass.checked = true;
-  }
-
-  const cameraEnabledPref = localStorage.getItem('viewfinder:cameraEnabled');
-  if (cameraEnabledPref !== null) {
-    const enabled = cameraEnabledPref === 'true';
-    cameraEnabledCheckbox.checked = enabled;
-    cameraEnabled = enabled;
-    if (enabled) {
-      toggleCamera();
-    }
-  }
-  const cameraDefaultOnPref = localStorage.getItem('viewfinder:cameraDefaultOn');
-  if (cameraDefaultOnPref !== null) {
-    const defaultOn = cameraDefaultOnPref === 'true';
-    cameraDefaultOnCheckbox.checked = defaultOn;
-    if (defaultOn && !cameraEnabled) {
-      toggleCamera();
-    }
-  }
-
-  const compassInvertPref = localStorage.getItem('viewfinder:compassInvert');
-  if (compassInvertPref !== null) {
-    const invert = compassInvertPref === 'true';
-    compassDirection = invert ? -1 : 1;
-    compassInvertCheckbox.checked = invert;
-    debug(`Loaded compass invert: ${invert ? 'on' : 'off'}`);
-  } else {
-    compassInvertCheckbox.checked = false;
-    compassDirection = 1;
-  }
-  const compassRatePref = localStorage.getItem('viewfinder:compassRate');
-  if (compassRatePref !== null) {
-    const rate = parseInt(compassRatePref);
-    compassRateSlider.value = rate;
-    compassRateValue.textContent = `${rate}ms`;
-    debug(`Loaded compass rate: ${rate}ms`);
-  }
-  const compassAutoCalibratePref = localStorage.getItem('viewfinder:compassAutoCalibrate');
-  if (compassAutoCalibratePref !== null) {
-    const autoCal = compassAutoCalibratePref === 'true';
-    compassAutoCalibrateCheckbox.checked = autoCal;
-    debug(`Loaded compass auto-calibrate: ${autoCal ? 'on' : 'off'}`);
-  } else {
-    compassAutoCalibrateCheckbox.checked = false;
-  }
-  const compassZeroOffsetPref = localStorage.getItem('viewfinder:compassZeroOffset');
-  if (compassZeroOffsetPref !== null) {
-    const offset = parseInt(compassZeroOffsetPref);
-    compassZeroOffset = offset;
-    if (compassZeroOffsetInput) compassZeroOffsetInput.value = offset;
-    debug(`Loaded compass zero offset: ${offset}°`);
-  }
-
-  const levelIndicatorPref = localStorage.getItem('viewfinder:levelIndicator');
-  if (levelIndicatorPref !== null) {
-    levelIndicatorEnabled = levelIndicatorPref === 'true';
-    levelIndicatorToggle.checked = levelIndicatorEnabled;
-    debug(`Loaded level indicator: ${levelIndicatorEnabled ? 'on' : 'off'}`);
-  } else {
-    levelIndicatorEnabled = false;
-    levelIndicatorToggle.checked = false;
-  }
-
-  const levelTagPref = localStorage.getItem('viewfinder:levelTag');
-  if (levelTagPref !== null) {
-    levelTagEnabled = levelTagPref === 'true';
-    levelTagToggle.checked = levelTagEnabled;
-    debug(`Loaded level tag: ${levelTagEnabled ? 'on' : 'off'}`);
-  } else {
-    levelTagEnabled = false;
-    levelTagToggle.checked = false;
-  }
-
-  const laneModePref = localStorage.getItem('viewfinder:laneMode');
-  if (laneModePref !== null) {
-    laneModeEnabled = laneModePref === 'true';
-    laneModeToggle.checked = laneModeEnabled;
-    debug(`Loaded lane markers: ${laneModeEnabled ? 'on' : 'off'}`);
-  } else {
-    laneModeEnabled = false;
-    laneModeToggle.checked = false;
-  }
-
-  const cleanWheelPref = localStorage.getItem('viewfinder:cleanWheel');
-  if (cleanWheelPref !== null) {
-    cleanWheelEnabled = cleanWheelPref === 'true';
-    cleanWheelToggle.checked = cleanWheelEnabled;
-    debug(`Loaded clean wheel: ${cleanWheelEnabled ? 'on' : 'off'}`);
-  } else {
-    cleanWheelEnabled = true;
-    cleanWheelToggle.checked = true;
-  }
-
-  const gpsRatePref = localStorage.getItem('viewfinder:gpsRate');
-  if (gpsRatePref !== null) {
-    const rateMs = parseInt(gpsRatePref);
-    gpsRateSlider.value = rateMs;
-    gpsRateValue.textContent = `${rateMs / 1000}s`;
-    debug(`Loaded GPS rate: ${rateMs / 1000}s`);
-  }
+  // Settings UI is now handled by settings-ui.js module
+  // settingsUI.init() was called earlier in init()
 
   if (statusGPS) {
     statusGPS.style.cursor = 'pointer';
