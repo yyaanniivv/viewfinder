@@ -118,7 +118,10 @@ let overlay = null;
 let compassCanvas = null;
 let compassCtx = null;
 
+// Compass orientation fix: some browsers report alpha inverted or offset
+// 1 = normal, -1 = inverted (flip direction)
 let compassDirection = 1;
+// Compass zero offset: adjust if North isn't at 0°
 let compassZeroOffset = 0;
 let levelPitch = null;
 let levelRoll = null;
@@ -482,6 +485,7 @@ async function init() {
     localStorage.setItem('viewfinder:showCompass', e.target.checked);
   });
 
+  // Settings checkboxes
   cameraEnabledCheckbox?.addEventListener('change', (e) => {
     const enabled = e.target.checked;
     localStorage.setItem('viewfinder:cameraEnabled', enabled);
