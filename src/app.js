@@ -590,7 +590,7 @@ async function init() {
     debugPane.dataset.state = show ? 'maximized' : 'minimized';
     toggleDebugPane.checked = show;
   } else {
-    debugPane.style.display = 'none';
+    debugPane.style.display = 'flex';
     debugPane.dataset.state = 'minimized';
     toggleDebugPane.checked = false;
   }
