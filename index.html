@@ -13,30 +13,22 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Version indicator (click for settings) -->
   <button id="version-badge" title="Settings">v1.0.0</button>
 
-  <!-- Main app container - full height, flex column -->
-  <div id="app-container" class="app-container">
-    <!-- Camera viewport - fills available space, contains camera + overlay + top/bottom bars -->
-    <div id="camera-viewport" class="camera-viewport">
-      <!-- Camera feed -->
-      <video id="camera" autoplay playsinline muted style="display: none;"></video>
+<div id="app-container" class="app-container">
+  <div id="camera-viewport" class="camera-viewport">
+    <video id="camera" autoplay playsinline muted style="display: none;"></video>
+    <canvas id="overlay" aria-label="Horizon markers overlay"></canvas>
 
-      <!-- Canvas overlay for markers (lane logic in center) -->
-      <canvas id="overlay" aria-label="Horizon markers overlay"></canvas>
+    <div class="top-bar">
+      <button id="compass-btn" class="compass-btn" aria-label="Tap to calibrate compass">
+        <canvas id="compass-canvas" width="200" height="200"></canvas>
+      </button>
 
-      <!-- TOP BAR: GPS/Compass related (overlay on camera) -->
-      <div class="top-bar">
-        <button id="compass-btn" class="compass-btn" aria-label="Tap to calibrate compass">
-          <canvas id="compass-canvas" width="200" height="200"></canvas>
-        </button>
-
-        <!-- Bearing display - shows current heading -->
-        <div id="bearing-display" class="bearing-display" aria-label="Current heading">
-          <span id="bearing-cardinal" class="bearing-cardinal">—</span>
-          <span id="bearing-degrees" class="bearing-degrees">—°</span>
-        </div>
+      <div id="bearing-display" class="bearing-display" aria-label="Current heading">
+        <span id="bearing-cardinal" class="bearing-cardinal">—</span>
+        <span id="bearing-degrees" class="bearing-degrees">—°</span>
+      </div>
 
         <div class="status-indicators">
           <div id="status-gps" class="warn">📍 GPS: —</div>
@@ -44,11 +36,8 @@
         </div>
       </div>
 
-      <!-- BOTTOM BAR: Camera related controls (overlay on camera) -->
       <div class="bottom-bar">
-        <!-- Camera controls row (lens switch + spacer + zoom indicator) -->
         <div class="camera-controls-row">
-          <!-- Camera/Lens switcher (left) -->
           <button id="lens-switch-btn" class="lens-switch-btn camera-side-btn" style="display: none;" aria-label="Switch camera lens" title="Switch lens">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -59,23 +48,26 @@
             </svg>
           </button>
 
-          <!-- Spacer for shutter button centering -->
           <div class="shutter-spacer"></div>
 
-          <!-- Zoom indicator (click to cycle) - right -->
           <button id="zoom-indicator" class="zoom-indicator camera-side-btn" style="display: none;" aria-label="Cycle zoom levels" title="Tap to cycle zoom (1×, 2×, 5×, 10×)">1×</button>
         </div>
 
-        <!-- Camera toggle button - bottom center (shutter) -->
-        <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera">
-          📷
+        <button id="camera-toggle-btn" class="camera-toggle-btn off" aria-label="Toggle camera feed" title="Turn on camera" aria-pressed="false">
+          <svg class="camera-icon-off" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+            <line x1="4" y1="4" x2="20" y2="20"></line>
+          </svg>
+          <svg class="camera-icon-on" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: none;">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
         </button>
       </div>
     </div>
 
-    <!-- Bottom Panels Container (Locations and Debug) - BELOW camera viewport, normal flow -->
     <div id="bottom-panels">
-      <!-- Locations Panel (top) -->
       <div id="locations-panel" class="panel" data-state="minimized">
         <div class="panel-header">
           <h3>Locations (<span id="location-count">0/0</span>)</h3>
@@ -87,7 +79,6 @@
         </div>
 
         <div class="panel-content">
-          <!-- Location Form -->
           <div id="location-form-container" class="form-container" style="display: none;">
             <form id="location-form">
               <div class="field">
@@ -125,12 +116,10 @@
             </form>
           </div>
 
-          <!-- Location List -->
           <div id="location-list" class="location-list"></div>
         </div>
       </div>
 
-      <!-- Debug Pane (bottom) - same style as locations panel -->
       <div id="debug-pane" class="panel debug-pane" data-state="minimized">
         <div class="panel-header">
           <h3>Debug</h3>
@@ -145,7 +134,6 @@
     </div>
   </div>
 
-  <!-- Settings Overlay -->
   <div id="settings-overlay" class="overlay" style="display: none;">
     <div class="picker-panel" style="max-width: 320px;">
       <div class="picker-header">
@@ -288,7 +276,6 @@
     </div>
   </div>
 
-  <!-- Current Location Overlay (triggered by compass button long-press; see calibration) -->
   <div id="current-location-overlay" class="overlay" style="display: none;">
     <div class="picker-panel">
       <div class="picker-header">
@@ -296,7 +283,6 @@
         <button id="current-location-close-btn" class="picker-close" aria-label="Close">×</button>
       </div>
 
-      <!-- Live GPS Status -->
       <div id="current-gps-status" class="current-gps-status">
         <div class="gps-stat">
           <span class="gps-stat-label">Latitude</span>
@@ -324,7 +310,6 @@
         </div>
       </div>
 
-      <!-- Manual Override Section -->
       <div class="picker-field">
         <label>Manual Override (when GPS is off or inaccurate):</label>
         <div class="manual-coords">
@@ -346,7 +331,6 @@
     </div>
   </div>
 
-  <!-- Calibration Overlay -->
   <div id="calibration-overlay" class="overlay" style="display: none;">
     <div class="picker-panel">
       <div class="picker-header">
@@ -370,7 +354,6 @@
     </div>
   </div>
 
-  <!-- Main app module -->
   <script type="module" src="src/app.js"></script>
 </body>
 </html>
