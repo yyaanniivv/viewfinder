@@ -116,21 +116,15 @@ function drawCompass(
   const radius = Math.min(width, height) / 2 - 4;
 
   ctx.clearRect(0, 0, width, height);
-  ctx.save();
-  ctx.translate(centerX, centerY);
 
-  // Rotate so 0° (North) points up, then apply negative heading
-  // Canvas: 0° = right (East), we want 0° = up (North)
-  ctx.rotate(-Math.PI / 2 - heading * Math.PI / 180);
-
-  // Outer ring
+  // Outer ring (fixed - doesn't rotate)
   ctx.beginPath();
-  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
   ctx.strokeStyle = isCalibrated ? '#FFFFFF' : '#FFBE0B';
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // Cardinal directions
+  // Cardinal directions (fixed - N always at top)
   const cardinals = ['N', 'E', 'S', 'W'];
   ctx.font = 'bold 20px system-ui, sans-serif';
   ctx.fillStyle = '#FFFFFF';
@@ -138,33 +132,58 @@ function drawCompass(
   ctx.textBaseline = 'middle';
 
   cardinals.forEach((dir, i) => {
-    const angle = (i * Math.PI / 2);
-    const x = Math.cos(angle) * (radius - 20);
-    const y = Math.sin(angle) * (radius - 20);
+    const angle = (i * Math.PI / 2) - Math.PI / 2; // 0° = North (up)
+    const x = centerX + Math.cos(angle) * (radius - 20);
+    const y = centerY + Math.sin(angle) * (radius - 20);
     ctx.fillText(dir, x, y);
   });
 
-  // Degree marks every 30°
+  // Degree marks every 30° (fixed)
   ctx.strokeStyle = 'rgba(255,255,255,0.5)';
   ctx.lineWidth = 1;
   for (let i = 0; i < 12; i++) {
-    const angle = i * Math.PI / 6;
+    const angle = (i * Math.PI / 6) - Math.PI / 2; // 0° = North (up)
     const inner = radius - 10;
     const outer = radius;
     ctx.beginPath();
-    ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
-    ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+    ctx.moveTo(centerX + Math.cos(angle) * inner, centerY + Math.sin(angle) * inner);
+    ctx.lineTo(centerX + Math.cos(angle) * outer, centerY + Math.sin(angle) * outer);
     ctx.stroke();
   }
 
-  // North indicator (red triangle at top)
+  // North indicator (fixed red triangle at top)
   ctx.fillStyle = '#FF6B6B';
   ctx.beginPath();
-  ctx.moveTo(0, -radius + 5);
-  ctx.lineTo(-8, -radius + 20);
-  ctx.lineTo(8, -radius + 20);
+  ctx.moveTo(centerX, centerY - radius + 5);
+  ctx.lineTo(centerX - 8, centerY - radius + 20);
+  ctx.lineTo(centerX + 8, centerY - radius + 20);
   ctx.closePath();
   ctx.fill();
+
+  // Heading pointer (rotates to show current heading)
+  // This is the key change: a pointer that rotates to indicate the heading
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  // Rotate to heading: 0° = North (up), so we rotate by heading degrees clockwise
+  ctx.rotate(heading * Math.PI / 180);
+
+  // Draw the heading pointer (triangle pointing up = North)
+  ctx.fillStyle = isCalibrated ? '#4ECDC4' : '#FFBE0B';
+  ctx.beginPath();
+  ctx.moveTo(0, -radius + 10); // Tip of pointer at top
+  ctx.lineTo(-10, -radius + 30); // Left base
+  ctx.lineTo(10, -radius + 30);  // Right base
+  ctx.closePath();
+  ctx.fill();
+
+  // Add a small line extending from center to pointer base for clarity
+  ctx.strokeStyle = isCalibrated ? '#4ECDC4' : '#FFBE0B';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, -radius + 15);
+  ctx.stroke();
 
   ctx.restore();
 
