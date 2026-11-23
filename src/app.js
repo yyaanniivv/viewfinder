@@ -25,6 +25,7 @@ import { startGPS } from './gps.js';
 import { getLocations, saveLocations, SAMPLE_LOCATIONS, createLocation, generateId, getNextColor, LOCATION_COLORS, LOCATION_TYPES, getTypeEmoji } from './storage.js';
 import { loadCalibration, saveCalibration, computeHeadingOffset, hasValidCalibration } from './calibration.js';
 import { normalizeBearing, formatDistance, haversineDistance, bearing } from './geo.js';
+import { loadSettings, updateSetting, getSetting } from './settings.js';
 
 const video = document.getElementById('camera');
 const canvas = document.getElementById('overlay');
@@ -135,6 +136,7 @@ let currentZoomLevel = 1;
 let pinchZoomCleanup = null;
 
 let panelsVisible = false;
+let compassMode = 'fixed'; // 'fixed' = N/E/S/W fixed, pointer rotates | 'dynamic' = wheel spins, pointer fixed at top
 
 function debug(msg) {
   console.log('[App]', msg);
@@ -296,6 +298,11 @@ async function init() {
   } else {
     debug('No valid calibration - showing calibration on first use');
   }
+
+  // Load compass mode setting
+  const settings = loadSettings();
+  compassMode = settings.compassMode || 'fixed';
+  debug(`Loaded compass mode: ${compassMode}`);
 
   const compassRate = parseInt(compassRateSlider?.value || '100');
   startCompass(handleCompassUpdate, { updateRate: compassRate })
@@ -557,6 +564,17 @@ async function init() {
     localStorage.setItem('viewfinder:compassAutoCalibrate', e.target.checked);
     debug(`Compass auto-calibrate: ${e.target.checked ? 'on' : 'off'}`);
   });
+
+  // Compass mode toggle
+  const compassModeSelect = document.getElementById('compass-mode-select');
+  if (compassModeSelect) {
+    compassModeSelect.value = compassMode;
+    compassModeSelect.addEventListener('change', (e) => {
+      compassMode = e.target.value;
+      updateSetting('compassMode', compassMode);
+      debug(`Compass mode: ${compassMode}`);
+    });
+  }
 
   levelIndicatorToggle?.addEventListener('change', (e) => {
     levelIndicatorEnabled = e.target.checked;
@@ -1688,11 +1706,107 @@ function drawCompass(heading) {
   const radius = Math.min(width, height) / 2 - 4;
 
   compassCtx.clearRect(0, 0, width, height);
+
+  if (compassMode === 'fixed') {
+    // FIXED MODE: Wheel stays fixed (N at top), pointer rotates to show heading
+    drawFixedWheel(centerX, centerY, radius, heading);
+  } else {
+    // DYNAMIC MODE: Wheel rotates with heading, pointer fixed at top (original behavior)
+    drawDynamicWheel(centerX, centerY, radius, heading);
+  }
+
+  // Center dot (always same)
+  compassCtx.beginPath();
+  compassCtx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+  compassCtx.fillStyle = '#4ECDC4';
+  compassCtx.fill();
+
+  // Heading text
+  compassCtx.font = 'bold 12px system-ui, sans-serif';
+  compassCtx.fillStyle = '#FFFFFF';
+  compassCtx.textAlign = 'center';
+  compassCtx.textBaseline = 'top';
+  compassCtx.fillText(`${Math.round(heading)}°`, centerX, centerY + radius + 6);
+}
+
+function drawFixedWheel(centerX, centerY, radius, heading) {
+  // Outer ring (fixed)
+  compassCtx.beginPath();
+  compassCtx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  compassCtx.strokeStyle = isCalibrated ? '#FFFFFF' : '#FFBE0B';
+  compassCtx.lineWidth = 3;
+  compassCtx.stroke();
+
+  // Cardinal directions (fixed - N always at top)
+  const cardinals = ['N', 'E', 'S', 'W'];
+  compassCtx.font = 'bold 14px system-ui, sans-serif';
+  compassCtx.fillStyle = '#FFFFFF';
+  compassCtx.textAlign = 'center';
+  compassCtx.textBaseline = 'middle';
+
+  cardinals.forEach((dir, i) => {
+    const angle = (i * Math.PI / 2) - Math.PI / 2; // 0° = North (up)
+    const x = centerX + Math.cos(angle) * (radius - 15);
+    const y = centerY + Math.sin(angle) * (radius - 15);
+    compassCtx.fillText(dir, x, y);
+  });
+
+  // Degree marks every 30° (fixed)
+  compassCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+  compassCtx.lineWidth = 1;
+  for (let i = 0; i < 12; i++) {
+    const angle = (i * Math.PI / 6) - Math.PI / 2; // 0° = North (up)
+    const inner = radius - 8;
+    const outer = radius;
+    compassCtx.beginPath();
+    compassCtx.moveTo(centerX + Math.cos(angle) * inner, centerY + Math.sin(angle) * inner);
+    compassCtx.lineTo(centerX + Math.cos(angle) * outer, centerY + Math.sin(angle) * outer);
+    compassCtx.stroke();
+  }
+
+  // North indicator (fixed red triangle at top)
+  compassCtx.fillStyle = '#FF6B6B';
+  compassCtx.beginPath();
+  compassCtx.moveTo(centerX, centerY - radius + 5);
+  compassCtx.lineTo(centerX - 6, centerY - radius + 16);
+  compassCtx.lineTo(centerX + 6, centerY - radius + 16);
+  compassCtx.closePath();
+  compassCtx.fill();
+
+  // Heading pointer (rotates to show current heading)
   compassCtx.save();
   compassCtx.translate(centerX, centerY);
+  // Rotate to heading: 0° = North (up), so we rotate by heading degrees clockwise
+  compassCtx.rotate(heading * Math.PI / 180);
 
-  // Rotate so 0° (North) points up, then apply negative heading
-  // Canvas: 0° = right (East), we want 0° = up (North)
+  // Draw the heading pointer (triangle pointing up = North)
+  compassCtx.fillStyle = isCalibrated ? '#4ECDC4' : '#FFBE0B';
+  compassCtx.beginPath();
+  compassCtx.moveTo(0, -radius + 8); // Tip of pointer at top
+  compassCtx.lineTo(-8, -radius + 22); // Left base
+  compassCtx.lineTo(8, -radius + 22);  // Right base
+  compassCtx.closePath();
+  compassCtx.fill();
+
+  // Add a small line extending from center to pointer base for clarity
+  compassCtx.strokeStyle = isCalibrated ? '#4ECDC4' : '#FFBE0B';
+  compassCtx.lineWidth = 2;
+  compassCtx.lineCap = 'round';
+  compassCtx.beginPath();
+  compassCtx.moveTo(0, 0);
+  compassCtx.lineTo(0, -radius + 12);
+  compassCtx.stroke();
+
+  compassCtx.restore();
+}
+
+function drawDynamicWheel(centerX, centerY, radius, heading) {
+  // In dynamic mode, rotate the entire wheel so that the current heading points UP
+  // This is the original behavior: wheel spins, N moves to show where North is relative to you
+  compassCtx.save();
+  compassCtx.translate(centerX, centerY);
+  // Rotate so that heading points UP (North is at the top of the screen)
+  // Canvas 0° = East, we want heading = North (up), so rotate by -(90° + heading)
   compassCtx.rotate(-Math.PI / 2 - heading * Math.PI / 180);
 
   // Outer ring
@@ -1702,7 +1816,7 @@ function drawCompass(heading) {
   compassCtx.lineWidth = 3;
   compassCtx.stroke();
 
-  // Cardinal directions
+  // Cardinal directions (rotate with wheel)
   const cardinals = ['N', 'E', 'S', 'W'];
   compassCtx.font = 'bold 14px system-ui, sans-serif';
   compassCtx.fillStyle = '#FFFFFF';
@@ -1729,7 +1843,7 @@ function drawCompass(heading) {
     compassCtx.stroke();
   }
 
-  // North indicator (red triangle at top)
+  // North indicator (red triangle at top - this IS the pointer in dynamic mode)
   compassCtx.fillStyle = '#FF6B6B';
   compassCtx.beginPath();
   compassCtx.moveTo(0, -radius + 5);
@@ -1739,17 +1853,4 @@ function drawCompass(heading) {
   compassCtx.fill();
 
   compassCtx.restore();
-
-  // Center dot
-  compassCtx.beginPath();
-  compassCtx.arc(centerX, centerY, 3, 0, Math.PI * 2);
-  compassCtx.fillStyle = '#4ECDC4';
-  compassCtx.fill();
-
-  // Heading text
-  compassCtx.font = 'bold 12px system-ui, sans-serif';
-  compassCtx.fillStyle = '#FFFFFF';
-  compassCtx.textAlign = 'center';
-  compassCtx.textBaseline = 'top';
-  compassCtx.fillText(`${Math.round(heading)}°`, centerX, centerY + radius + 6);
 }

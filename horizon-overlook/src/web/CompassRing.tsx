@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { normalizeBearing, deg2rad } from '../core/geo';
+import { loadSettings } from '../core/settings';
 
 interface CompassRingProps {
   heading: number; // calibrated heading, 0° = North
@@ -23,6 +24,10 @@ export const CompassRing: React.FC<CompassRingProps> = ({
   const animatedHeadingRef = useRef(0);
   const animationFrameRef = useRef<number | null>(null);
   const [showCalibrationHint, setShowCalibrationHint] = useState(false);
+  const [compassMode, setCompassMode] = useState<'fixed' | 'dynamic'>(() => {
+    const settings = loadSettings();
+    return settings.compass.compassMode;
+  });
 
   // Smooth heading animation
   useEffect(() => {
@@ -36,7 +41,7 @@ export const CompassRing: React.FC<CompassRingProps> = ({
       );
 
       if (canvasRef.current) {
-        drawCompass(canvasRef.current, animatedHeadingRef.current, isCalibrated, calibrationProgress, showCalibrationHint);
+        drawCompass(canvasRef.current, animatedHeadingRef.current, isCalibrated, calibrationProgress, showCalibrationHint, compassMode);
       }
       animationFrameRef.current = requestAnimationFrame(animate);
     };
@@ -45,14 +50,26 @@ export const CompassRing: React.FC<CompassRingProps> = ({
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [heading, isCalibrated, calibrationProgress, showCalibrationHint]);
+  }, [heading, isCalibrated, calibrationProgress, showCalibrationHint, compassMode]);
 
   // Initial draw
   useEffect(() => {
     if (canvasRef.current) {
-      drawCompass(canvasRef.current, heading, isCalibrated, calibrationProgress, showCalibrationHint);
+      drawCompass(canvasRef.current, heading, isCalibrated, calibrationProgress, showCalibrationHint, compassMode);
     }
-  }, [heading, isCalibrated, calibrationProgress, showCalibrationHint]);
+  }, [heading, isCalibrated, calibrationProgress, showCalibrationHint, compassMode]);
+
+  // Listen for settings changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'horizon-overlook:settings') {
+        const settings = loadSettings();
+        setCompassMode(settings.compass.compassMode);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onCalibrate || isCalibrated) return;
@@ -105,7 +122,8 @@ function drawCompass(
   heading: number,
   isCalibrated: boolean,
   calibrationProgress?: number,
-  showHint: boolean = false
+  showHint: boolean = false,
+  compassMode: 'fixed' | 'dynamic' = 'fixed'
 ): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -117,7 +135,65 @@ function drawCompass(
 
   ctx.clearRect(0, 0, width, height);
 
-  // Outer ring (fixed - doesn't rotate)
+  if (compassMode === 'fixed') {
+    // FIXED MODE: Wheel stays fixed (N at top), pointer rotates to show heading
+    drawFixedWheel(ctx, centerX, centerY, radius, heading, isCalibrated);
+  } else {
+    // DYNAMIC MODE: Wheel rotates with heading, pointer fixed at top
+    drawDynamicWheel(ctx, centerX, centerY, radius, heading, isCalibrated);
+  }
+
+  // Center dot (always same)
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+  ctx.fillStyle = isCalibrated ? '#4ECDC4' : '#FFBE0B';
+  ctx.fill();
+
+  // Heading text
+  ctx.font = 'bold 16px system-ui, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`${Math.round(heading)}°`, centerX, centerY + radius + 8);
+
+  // Calibration progress ring
+  if (calibrationProgress !== undefined && calibrationProgress < 1 && !isCalibrated) {
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius + 6, -Math.PI / 2, -Math.PI / 2 + calibrationProgress * Math.PI * 2);
+    ctx.strokeStyle = '#FFBE0B';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // Uncalibrated warning
+  if (!isCalibrated) {
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.fillStyle = '#FFBE0B';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('UNCALIBRATED', centerX, centerY - radius - 8);
+  }
+
+  // Tap to calibrate hint
+  if (showHint && !isCalibrated) {
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255, 190, 11, 0.9)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Tap to calibrate', centerX, centerY + radius + 28);
+  }
+}
+
+function drawFixedWheel(
+  ctx: CanvasRenderingContext2D,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  heading: number,
+  isCalibrated: boolean
+): void {
+  // Outer ring (fixed)
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
   ctx.strokeStyle = isCalibrated ? '#FFFFFF' : '#FFBE0B';
@@ -161,7 +237,6 @@ function drawCompass(
   ctx.fill();
 
   // Heading pointer (rotates to show current heading)
-  // This is the key change: a pointer that rotates to indicate the heading
   ctx.save();
   ctx.translate(centerX, centerY);
   // Rotate to heading: 0° = North (up), so we rotate by heading degrees clockwise
@@ -186,45 +261,66 @@ function drawCompass(
   ctx.stroke();
 
   ctx.restore();
+}
 
-  // Center dot
+function drawDynamicWheel(
+  ctx: CanvasRenderingContext2D,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  heading: number,
+  isCalibrated: boolean
+): void {
+  // In dynamic mode, rotate the entire wheel so that the current heading points UP
+  // This is the original behavior: wheel spins, N moves to show where North is relative to you
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  // Rotate so that heading points UP (North is at the top of the screen)
+  // Canvas 0° = East, we want heading = North (up), so rotate by -(90° + heading)
+  ctx.rotate(-Math.PI / 2 - heading * Math.PI / 180);
+
+  // Outer ring
   ctx.beginPath();
-  ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
-  ctx.fillStyle = isCalibrated ? '#4ECDC4' : '#FFBE0B';
-  ctx.fill();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = isCalibrated ? '#FFFFFF' : '#FFBE0B';
+  ctx.lineWidth = 3;
+  ctx.stroke();
 
-  // Heading text
-  ctx.font = 'bold 16px system-ui, sans-serif';
+  // Cardinal directions (rotate with wheel)
+  const cardinals = ['N', 'E', 'S', 'W'];
+  ctx.font = 'bold 20px system-ui, sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText(`${Math.round(heading)}°`, centerX, centerY + radius + 8);
+  ctx.textBaseline = 'middle';
 
-  // Calibration progress ring
-  if (calibrationProgress !== undefined && calibrationProgress < 1 && !isCalibrated) {
+  cardinals.forEach((dir, i) => {
+    const angle = (i * Math.PI / 2);
+    const x = Math.cos(angle) * (radius - 20);
+    const y = Math.sin(angle) * (radius - 20);
+    ctx.fillText(dir, x, y);
+  });
+
+  // Degree marks every 30°
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 12; i++) {
+    const angle = i * Math.PI / 6;
+    const inner = radius - 10;
+    const outer = radius;
     ctx.beginPath();
-    ctx.arc(centerX, centerY, radius + 6, -Math.PI / 2, -Math.PI / 2 + calibrationProgress * Math.PI * 2);
-    ctx.strokeStyle = '#FFBE0B';
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
+    ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+    ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
     ctx.stroke();
   }
 
-  // Uncalibrated warning
-  if (!isCalibrated) {
-    ctx.font = '11px system-ui, sans-serif';
-    ctx.fillStyle = '#FFBE0B';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('UNCALIBRATED', centerX, centerY - radius - 8);
-  }
+  // North indicator (red triangle at top - this IS the pointer in dynamic mode)
+  ctx.fillStyle = '#FF6B6B';
+  ctx.beginPath();
+  ctx.moveTo(0, -radius + 5);
+  ctx.lineTo(-8, -radius + 20);
+  ctx.lineTo(8, -radius + 20);
+  ctx.closePath();
+  ctx.fill();
 
-  // Tap to calibrate hint
-  if (showHint && !isCalibrated) {
-    ctx.font = '10px system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255, 190, 11, 0.9)';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText('Tap to calibrate', centerX, centerY + radius + 28);
-  }
+  ctx.restore();
 }

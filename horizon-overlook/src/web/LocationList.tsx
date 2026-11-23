@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Location, GeoPoint } from '../core/geo';
 import { generateId, LOCATION_COLORS, getNextColor } from '../core/storage';
+import { loadSettings, updateSetting } from '../core/settings';
 
 interface LocationListProps {
   locations: Location[];
@@ -37,6 +38,10 @@ export const LocationList: React.FC<LocationListProps> = ({
     color: LOCATION_COLORS[0],
     type: 'custom' as Location['type'],
   });
+  const [compassMode, setCompassMode] = useState<'fixed' | 'dynamic'>(() => {
+    const settings = loadSettings();
+    return settings.compass.compassMode;
+  });
 
   const resetForm = () => {
     setFormData({
@@ -52,6 +57,18 @@ export const LocationList: React.FC<LocationListProps> = ({
   useEffect(() => {
     resetForm();
   }, [userPosition, locations]);
+
+  // Listen for settings changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'horizon-overlook:settings') {
+        const settings = loadSettings();
+        setCompassMode(settings.compass.compassMode);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,6 +138,26 @@ export const LocationList: React.FC<LocationListProps> = ({
             + Add Location
           </button>
         </div>
+      </div>
+
+      {/* Compass Mode Toggle */}
+      <div style={styles.settingRow}>
+        <label style={styles.settingLabel}>
+          <span style={styles.settingIcon}>🧭</span>
+          <span style={styles.settingText}>Compass Mode</span>
+        </label>
+        <select
+          style={styles.settingSelect}
+          value={compassMode}
+          onChange={(e) => {
+            const newMode = e.target.value as 'fixed' | 'dynamic';
+            setCompassMode(newMode);
+            updateSetting('compass', { ...loadSettings().compass, compassMode: newMode });
+          }}
+        >
+          <option value="fixed">Fixed Wheel (N↑, pointer rotates)</option>
+          <option value="dynamic">Dynamic Wheel (wheel spins, pointer fixed)</option>
+        </select>
       </div>
 
       {isAdding && (
@@ -485,5 +522,37 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     cursor: 'pointer',
     borderTop: '1px solid rgba(255,255,255,0.1)',
+  },
+  settingRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '12px',
+    background: 'rgba(255,255,255,0.05)',
+    borderRadius: '8px',
+    border: '1px solid rgba(255,255,255,0.05)',
+    marginBottom: '16px',
+  },
+  settingLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '14px',
+    color: '#FFFFFF',
+  },
+  settingIcon: {
+    fontSize: '16px',
+  },
+  settingText: {
+    fontWeight: '500',
+  },
+  settingSelect: {
+    padding: '8px 12px',
+    fontSize: '14px',
+    color: '#FFFFFF',
+    background: 'rgba(255,255,255,0.1)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    borderRadius: '6px',
+    cursor: 'pointer',
   },
 };
