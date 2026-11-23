@@ -211,6 +211,13 @@
       <div class="settings-section">
         <h3>Compass</h3>
         <div class="setting-row">
+          <label for="compass-mode-select">Mode</label>
+          <select id="compass-mode-select" style="flex: 1; max-width: 200px; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff;">
+            <option value="fixed">Fixed Wheel (N↑, pointer rotates)</option>
+            <option value="dynamic">Dynamic Wheel (wheel spins)</option>
+          </select>
+        </div>
+        <div class="setting-row">
           <label>
             <input type="checkbox" id="compass-invert">
             <span>Invert Compass Direction</span>
