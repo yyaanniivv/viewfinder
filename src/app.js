@@ -392,6 +392,8 @@ async function init() {
     minimizeLocationsBtn.style.display = 'none';
     maximizeLocationsBtn.style.display = 'flex';
     debugPane.classList.add('above-panel');
+    toggleLocationsPanel.checked = false;
+    localStorage.setItem('viewfinder:showLocations', false);
     updateViewportForPanels();
   });
   maximizeLocationsBtn?.addEventListener('click', () => {
@@ -399,6 +401,8 @@ async function init() {
     maximizeLocationsBtn.style.display = 'none';
     minimizeLocationsBtn.style.display = 'flex';
     debugPane.classList.remove('above-panel');
+    toggleLocationsPanel.checked = true;
+    localStorage.setItem('viewfinder:showLocations', true);
     updateViewportForPanels();
   });
 
@@ -409,12 +413,15 @@ async function init() {
       maximizeLocationsBtn.style.display = 'none';
       minimizeLocationsBtn.style.display = 'flex';
       debugPane.classList.remove('above-panel');
+      toggleLocationsPanel.checked = true;
     } else {
       locationsPanel.dataset.state = 'minimized';
       minimizeLocationsBtn.style.display = 'none';
       maximizeLocationsBtn.style.display = 'flex';
       debugPane.classList.add('above-panel');
+      toggleLocationsPanel.checked = false;
     }
+    localStorage.setItem('viewfinder:showLocations', locationsPanel.dataset.state === 'maximized');
     updateViewportForPanels();
   });
 
@@ -425,6 +432,8 @@ async function init() {
     if (locationsPanel.dataset.state === 'minimized') {
       debugPane.classList.add('above-panel');
     }
+    toggleDebugPane.checked = false;
+    localStorage.setItem('viewfinder:showDebug', false);
     updateViewportForPanels();
   });
   maximizeDebugBtn?.addEventListener('click', () => {
@@ -432,6 +441,8 @@ async function init() {
     maximizeDebugBtn.style.display = 'none';
     minimizeDebugBtn.style.display = 'flex';
     debugPane.classList.remove('above-panel');
+    toggleDebugPane.checked = true;
+    localStorage.setItem('viewfinder:showDebug', true);
     updateViewportForPanels();
   });
 
@@ -442,6 +453,7 @@ async function init() {
       maximizeDebugBtn.style.display = 'none';
       minimizeDebugBtn.style.display = 'flex';
       debugPane.classList.remove('above-panel');
+      toggleDebugPane.checked = true;
     } else {
       debugPane.dataset.state = 'minimized';
       minimizeDebugBtn.style.display = 'none';
@@ -449,7 +461,10 @@ async function init() {
       if (locationsPanel.dataset.state === 'minimized') {
         debugPane.classList.add('above-panel');
       }
+      toggleDebugPane.checked = false;
     }
+    localStorage.setItem('viewfinder:showDebug', debugPane.dataset.state === 'maximized');
+    updateViewportForPanels();
   });
 
   settingsBtn?.addEventListener('click', () => {
@@ -471,12 +486,27 @@ async function init() {
   toggleLocationsPanel?.addEventListener('change', (e) => {
     locationsPanel.style.display = e.target.checked ? 'flex' : 'none';
     locationsPanel.dataset.state = e.target.checked ? 'maximized' : 'minimized';
+    if (e.target.checked) {
+      minimizeLocationsBtn.style.display = 'flex';
+      maximizeLocationsBtn.style.display = 'none';
+    } else {
+      minimizeLocationsBtn.style.display = 'none';
+      maximizeLocationsBtn.style.display = 'flex';
+    }
     localStorage.setItem('viewfinder:showLocations', e.target.checked);
     updateViewportForPanels();
   });
   toggleDebugPane?.addEventListener('change', (e) => {
     debugPane.style.display = e.target.checked ? 'flex' : 'none';
     debugPane.dataset.state = e.target.checked ? 'maximized' : 'minimized';
+    // Sync minimize/maximize buttons with panel state
+    if (e.target.checked) {
+      minimizeDebugBtn.style.display = 'flex';
+      maximizeDebugBtn.style.display = 'none';
+    } else {
+      minimizeDebugBtn.style.display = 'none';
+      maximizeDebugBtn.style.display = 'flex';
+    }
     localStorage.setItem('viewfinder:showDebug', e.target.checked);
     updateViewportForPanels();
   });
