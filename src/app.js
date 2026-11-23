@@ -1797,7 +1797,18 @@ function drawDynamicWheel(centerX, centerY, radius, heading) {
   // This is the original behavior: wheel spins, N moves to show where North is relative to you
   compassCtx.save();
   compassCtx.translate(centerX, centerY);
-  // Rotate so that heading points UP (North is at the top of the screen)
+
+  // FIRST: Draw the fixed pointer at top of screen (12 o'clock) BEFORE rotating
+  // This shows "you are here" - the device orientation relative to the spinning wheel
+  compassCtx.fillStyle = '#FF6B6B';
+  compassCtx.beginPath();
+  compassCtx.moveTo(0, -radius + 5);
+  compassCtx.lineTo(-6, -radius + 16);
+  compassCtx.lineTo(6, -radius + 16);
+  compassCtx.closePath();
+  compassCtx.fill();
+
+  // THEN: Rotate the wheel so that heading points UP (North at top of screen)
   // Canvas 0° = East, we want heading = North (up), so rotate by -(90° + heading)
   compassCtx.rotate(-Math.PI / 2 - heading * Math.PI / 180);
 
@@ -1834,16 +1845,6 @@ function drawDynamicWheel(centerX, centerY, radius, heading) {
     compassCtx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
     compassCtx.stroke();
   }
-
-  // Fixed pointer at top (red dot/triangle) - always points to top of screen
-  // This shows "you are here" - the device orientation relative to the wheel
-  compassCtx.fillStyle = '#FF6B6B';
-  compassCtx.beginPath();
-  compassCtx.moveTo(0, -radius + 5);
-  compassCtx.lineTo(-6, -radius + 16);
-  compassCtx.lineTo(6, -radius + 16);
-  compassCtx.closePath();
-  compassCtx.fill();
 
   compassCtx.restore();
 }

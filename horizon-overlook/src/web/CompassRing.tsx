@@ -267,7 +267,18 @@ function drawDynamicWheel(
   // This is the original behavior: wheel spins, N moves to show where North is relative to you
   ctx.save();
   ctx.translate(centerX, centerY);
-  // Rotate so that heading points UP (North is at the top of the screen)
+
+  // FIRST: Draw the fixed pointer at top of screen (12 o'clock) BEFORE rotating
+  // This shows "you are here" - the device orientation relative to the spinning wheel
+  ctx.fillStyle = '#FF6B6B';
+  ctx.beginPath();
+  ctx.moveTo(0, -radius + 5);
+  ctx.lineTo(-8, -radius + 20);
+  ctx.lineTo(8, -radius + 20);
+  ctx.closePath();
+  ctx.fill();
+
+  // THEN: Rotate the wheel so that heading points UP (North at top of screen)
   // Canvas 0° = East, we want heading = North (up), so rotate by -(90° + heading)
   ctx.rotate(-Math.PI / 2 - heading * Math.PI / 180);
 
@@ -304,16 +315,6 @@ function drawDynamicWheel(
     ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
     ctx.stroke();
   }
-
-  // Fixed pointer at top (red triangle) - always points to top of screen
-  // This shows "you are here" - the device orientation relative to the wheel
-  ctx.fillStyle = '#FF6B6B';
-  ctx.beginPath();
-  ctx.moveTo(0, -radius + 5);
-  ctx.lineTo(-8, -radius + 20);
-  ctx.lineTo(8, -radius + 20);
-  ctx.closePath();
-  ctx.fill();
 
   ctx.restore();
 }
