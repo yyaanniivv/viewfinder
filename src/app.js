@@ -431,8 +431,8 @@ async function init() {
   setupCurrentLocationEvents();
 
   cameraToggleBtn?.addEventListener('click', () => {
-    toggleCamera();
-    cameraEnabledCheckbox.checked = cameraEnabled;
+    cameraControls.toggleCamera();
+    cameraEnabledCheckbox.checked = state.cameraEnabled;
   });
 
   if (compassCanvas) {
