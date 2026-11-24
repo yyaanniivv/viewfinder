@@ -25,7 +25,7 @@ import { startGPS } from './gps.js';
 import { getLocations, saveLocations, SAMPLE_LOCATIONS, createLocation, generateId, getNextColor, LOCATION_COLORS, LOCATION_TYPES, getTypeEmoji } from './storage.js';
 import { loadSettings, updateSetting, getSetting } from './settings.js';
 import { initSettingsUI } from './settings-ui.js';
-import { initGPSStatus } from './gps-status.js';
+import { initGPSUI } from './gps-ui.js';
 import { initCompassUI } from './compass-ui.js';
 
 const video = document.getElementById('camera');
@@ -315,7 +315,7 @@ async function init() {
       }
     },
     onLevelTagChange: () => {
-      gpsStatus.updateStatus();
+      gpsUI.updateStatus();
     },
   };
 
@@ -351,8 +351,8 @@ async function init() {
     }
   });
 
-  // Initialize GPS Status module
-  const gpsStatus = initGPSStatus({
+  // Initialize GPS UI module
+  const gpsUI = initGPSUI({
     statusGPS,
     currentLocationOverlay,
     currentLocationCloseBtn,
@@ -419,8 +419,8 @@ async function init() {
     const gpsRate = parseInt(gpsRateSlider?.value || '10000');
     debug('Starting GPS...');
     gpsModule = startGPS(
-      (pos) => gpsStatus.handleGPSUpdate(pos),
-      (err) => gpsStatus.handleGPSError(err),
+      (pos) => gpsUI.handleGPSUpdate(pos),
+      (err) => gpsUI.handleGPSError(err),
       { updateRateMs: gpsRate }
     );
     debug(`GPS watch started (rate: ${gpsRate / 1000}s)`);
@@ -457,7 +457,7 @@ async function init() {
   });
 
   // Pass locations to modules (they need reference for various operations)
-  gpsStatus.setLocations(locations);
+  gpsUI.setLocations(locations);
   compassUI.setLocations(locations);
 
   // Store compassUI drawCompass reference for animate()

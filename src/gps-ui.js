@@ -1,5 +1,5 @@
 /**
- * GPS Status Module
+ * GPS UI Module
  * Handles GPS display, current location overlay, and manual location entry
  */
 
@@ -7,7 +7,7 @@ import { haversineDistance, bearing, normalizeBearing, formatDistance } from './
 import { getSetting } from './settings.js';
 
 /**
- * Initialize GPS status module
+ * Initialize GPS UI module
  * @param {Object} deps - Dependencies
  * @param {HTMLElement} deps.statusGPS - GPS status pill element
  * @param {HTMLElement} deps.currentLocationOverlay - Current location overlay element
@@ -30,9 +30,9 @@ import { getSetting } from './settings.js';
  * @param {Function} [deps.onCompassAbsoluteChange] - Callback when compass absolute changes
  * @param {Function} [deps.onHeadingOffsetChange] - Callback when heading offset changes
  * @param {Function} [deps.onTrackedLocationIdChange] - Callback when tracked location ID changes
- * @returns {Object} GPS status controller
+ * @returns {Object} GPS UI controller
  */
-export function initGPSStatus(deps) {
+export function initGPSUI(deps) {
   const {
     statusGPS,
     currentLocationOverlay,
