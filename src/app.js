@@ -142,6 +142,11 @@ let cleanWheelEnabled = true;
 let panelsVisible = false;
 let compassMode = 'fixed'; // 'fixed' = N/E/S/W fixed, pointer rotates | 'dynamic' = wheel spins, pointer fixed at top
 
+// Early debug function (before init() defines the full one)
+function earlyDebug(msg) {
+  console.log('[App]', msg);
+}
+
 /**
  * Update camera viewport for bottom panels
  * With flex layout, panels are in normal flow below viewport
@@ -154,7 +159,7 @@ function updateViewportForPanels() {
 
   if (panelsVisibleNow !== panelsVisible) {
     panelsVisible = panelsVisibleNow;
-    debug(`Panels visibility changed: ${panelsVisible}`);
+    earlyDebug(`Panels visibility changed: ${panelsVisible}`);
   }
 
   // Update container data attribute for CSS border-radius styling
