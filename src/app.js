@@ -343,6 +343,13 @@ async function init() {
     get() { return cameraEnabled; },
     set(v) { cameraEnabled = v; }
   });
+  Object.defineProperty(state, 'compassMode', {
+    get() { return compassMode; },
+    set(v) {
+      compassMode = v;
+      compassUI.setCompassMode?.(v);
+    }
+  });
 
   // Initialize GPS Status module
   const gpsStatus = initGPSStatus({
