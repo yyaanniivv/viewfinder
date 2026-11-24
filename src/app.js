@@ -29,6 +29,7 @@ import { loadSettings, updateSetting, getSetting } from './settings.js';
 import { initSettingsUI } from './settings-ui.js';
 import { initGPSUI } from './gps-ui.js';
 import { initCompassUI } from './compass-ui.js';
+import { initCameraControls } from './camera-controls.js';
 
 const video = document.getElementById('camera');
 const canvas = document.getElementById('overlay');
@@ -129,10 +130,6 @@ let levelTagEnabled = false;
 let laneModeEnabled = false;
 let cleanWheelEnabled = true;
 
-let availableZoomLevels = [...DEFAULT_ZOOM_LEVELS];
-let currentZoomLevel = 1;
-let pinchZoomCleanup = null;
-
 let panelsVisible = false;
 let compassMode = 'fixed'; // 'fixed' = N/E/S/W fixed, pointer rotates | 'dynamic' = wheel spins, pointer fixed at top
 
@@ -226,7 +223,7 @@ async function init() {
 
   // Initialize settings UI
   const state = {
-    cameraEnabled,
+    cameraEnabled: false,
     cameraDefaultOn: cameraDefaultOnCheckbox?.checked || false,
     compassDirection,
     compassRate: parseInt(compassRateSlider?.value || '100'),
@@ -240,12 +237,7 @@ async function init() {
     compassModule: null,
     gpsModule: null,
     onCameraToggle: (enabled) => {
-      cameraEnabled = enabled;
-      if (enabled && !cameraEnabled) {
-        toggleCamera();
-      } else if (!enabled && cameraEnabled) {
-        toggleCamera();
-      }
+      state.cameraEnabled = enabled;
     },
     onLevelTagChange: () => {
       gpsUI.updateStatus();
@@ -263,6 +255,30 @@ async function init() {
     state,
   });
 
+  // Initialize camera controls
+  const cameraControls = initCameraControls({
+    video,
+    cameraToggleBtn,
+    zoomIndicator,
+    lensSwitchBtn,
+    debug,
+    showError,
+    state,
+  });
+
+  // Make camera controls available globally for settings callbacks
+  state.onCameraToggle = (enabled) => {
+    state.cameraEnabled = enabled;
+    if (enabled && !state.cameraEnabled) {
+      cameraControls.toggleCamera();
+    } else if (!enabled && state.cameraEnabled) {
+      cameraControls.toggleCamera();
+    }
+  };
+  state.onLevelTagChange = () => {
+    updateStatus();
+  };
+
   // Sync modules with state after they're initialized
   Object.defineProperty(state, 'compassModule', {
     get() { return compassModule; },
@@ -271,6 +287,10 @@ async function init() {
   Object.defineProperty(state, 'gpsModule', {
     get() { return gpsModule; },
     set(v) { gpsModule = v; }
+  });
+  Object.defineProperty(state, 'cameraEnabled', {
+    get() { return cameraEnabled; },
+    set(v) { cameraEnabled = v; }
   });
   Object.defineProperty(state, 'compassMode', {
     get() { return compassMode; },
@@ -381,8 +401,8 @@ async function init() {
   debug('Animation loop started');
 
   cameraToggleBtn?.addEventListener('click', () => {
-    toggleCamera();
-    cameraEnabledCheckbox.checked = cameraEnabled;
+    cameraControls.toggleCamera();
+    cameraEnabledCheckbox.checked = state.cameraEnabled;
   });
 
   // Pass locations to modules (they need reference for various operations)
