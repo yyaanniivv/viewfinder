@@ -4,6 +4,21 @@
  */
 
 import { Overlay } from './overlay.js';
+import {
+  startCamera,
+  stopCamera,
+  switchCamera,
+  cycleCamera,
+  setZoom,
+  getCurrentZoom,
+  getAvailableZoomLevels,
+  setAvailableZoomLevels,
+  cycleZoomLevel,
+  cycleZoomLevelBack,
+  setupPinchZoom,
+  getAvailableCameras,
+  DEFAULT_ZOOM_LEVELS
+} from './camera.js';
 import { startCompass } from './compass.js';
 import { startGPS } from './gps.js';
 
@@ -12,6 +27,8 @@ import { loadCalibration, saveCalibration, computeHeadingOffset, hasValidCalibra
 import { normalizeBearing, formatDistance, haversineDistance, bearing } from './geo.js';
 import { loadSettings, updateSetting, getSetting } from './settings.js';
 import { initSettingsUI } from './settings-ui.js';
+import { initGPSUI } from './gps-ui.js';
+import { initCompassUI } from './compass-ui.js';
 import { initCameraControls } from './camera-controls.js';
 
 const video = document.getElementById('camera');
@@ -85,13 +102,8 @@ const zoomGestureEnabledCheckbox = document.getElementById('zoom-gesture-enabled
 const zoomButtonsEnabledCheckbox = document.getElementById('zoom-buttons-enabled');
 const zoomCycleEnabledCheckbox = document.getElementById('zoom-cycle-enabled');
 
-let compassDialActive = false;
-let compassDialStartAngle = 0;
-let compassDialStartOffset = 0;
-let compassPermissionRequested = false;
 let compassModule = null;
 let gpsModule = null;
-let compassDialAbortController = null;
 
 let userPosition = null;
 let gpsAccuracy = null;
@@ -152,84 +164,6 @@ function updateViewportForPanels() {
   bottomPanels.dataset.visiblePanels = visibleCount;
 }
 
-function handleCompassDialStart(e) {
-  if (!compassCanvas || !compassCtx) return;
-  // Only allow dial adjustment when calibrated
-  if (headingOffset === 0 && compassAlpha === null) return;
-
-  e.preventDefault();
-  const rect = compassCanvas.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-  compassDialStartAngle = Math.atan2(clientY - centerY, clientX - centerX);
-  compassDialStartOffset = headingOffset;
-  compassDialActive = true;
-
-  // Visual feedback
-  compassCanvas.style.cursor = 'grabbing';
-}
-
-function handleCompassDialMove(e) {
-  if (!compassDialActive || !compassCanvas) return;
-  e.preventDefault();
-
-  const rect = compassCanvas.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-  const currentAngle = Math.atan2(clientY - centerY, clientX - centerX);
-  const angleDiff = currentAngle - compassDialStartAngle;
-  const degreesDiff = angleDiff * 180 / Math.PI;
-
-  headingOffset = compassDialStartOffset + degreesDiff;
-  headingOffset = ((headingOffset % 360) + 360) % 360;
-
-  saveCalibration({
-    headingOffset,
-    calibratedAt: Date.now(),
-    landmarkName: 'manual dial',
-    landmarkPosition: null,
-  });
-
-  debug(`Compass dial: offset=${headingOffset.toFixed(1)}°`);
-}
-
-function handleCompassDialEnd(e) {
-  if (!compassDialActive) return;
-  compassDialActive = false;
-  isCalibrated = true;
-  if (compassCanvas) {
-    compassCanvas.style.cursor = 'grab';
-  }
-  debug(`Compass dial ended: offset=${headingOffset.toFixed(1)}°`);
-}
-
-function requestCompassPermission() {
-  if (compassPermissionRequested) {
-    debug('Compass permission already requested');
-    return Promise.resolve(true);
-  }
-  compassPermissionRequested = true;
-  debug('Requesting compass permission on user gesture...');
-  return compassModule.requestPermission()
-    .then(() => {
-      debug('Compass permission granted');
-      return true;
-    })
-    .catch(err => {
-      debug('Compass permission error: ' + err.message);
-      showError(`Compass permission denied. Enable in Settings > Safari > Motion & Orientation Access.`);
-      throw err;
-    });
-}
-
 async function init() {
   console.log('[App] init() started');
 
@@ -287,22 +221,12 @@ async function init() {
   compassMode = settings.compassMode || 'fixed';
   debug(`Loaded compass mode: ${compassMode}`);
 
-  const compassRate = parseInt(compassRateSlider?.value || '100');
-  startCompass(handleCompassUpdate, { updateRate: compassRate })
-    .then(module => {
-      compassModule = module;
-      debug(`Compass module initialized (rate: ${compassRate}ms, permission on first user gesture)`);
-    })
-    .catch(err => {
-      debug('Compass init failed: ' + err.message);
-    });
-
   // Initialize settings UI
   const state = {
     cameraEnabled: false,
     cameraDefaultOn: cameraDefaultOnCheckbox?.checked || false,
     compassDirection,
-    compassRate,
+    compassRate: parseInt(compassRateSlider?.value || '100'),
     compassZeroOffset,
     compassAutoCalibrate: compassAutoCalibrateCheckbox?.checked || false,
     levelIndicatorEnabled,
@@ -316,7 +240,7 @@ async function init() {
       state.cameraEnabled = enabled;
     },
     onLevelTagChange: () => {
-      updateStatus();
+      gpsUI.updateStatus();
     },
   };
 
@@ -356,8 +280,6 @@ async function init() {
   };
 
   // Sync modules with state after they're initialized
-  const originalCompassModule = compassModule;
-  const originalGpsModule = gpsModule;
   Object.defineProperty(state, 'compassModule', {
     get() { return compassModule; },
     set(v) { compassModule = v; }
@@ -366,11 +288,86 @@ async function init() {
     get() { return gpsModule; },
     set(v) { gpsModule = v; }
   });
+  Object.defineProperty(state, 'compassMode', {
+    get() { return compassMode; },
+    set(v) {
+      compassMode = v;
+      compassUI.setCompassMode?.(v);
+    }
+  });
 
+  // Initialize GPS UI module
+  const gpsUI = initGPSUI({
+    statusGPS,
+    currentLocationOverlay,
+    currentLocationCloseBtn,
+    currentLocationUseGpsBtn,
+    currentLocationSetManualBtn,
+    manualLat,
+    manualLon,
+    gpsLatEl,
+    gpsLonEl,
+    gpsAltEl,
+    gpsAccEl,
+    gpsCompassEl,
+    gpsBearingEl,
+    debug,
+    showError,
+    // Callbacks to update app.js state
+    onUserPositionChange: (pos) => { userPosition = pos; },
+    onGpsAccuracyChange: (acc) => { gpsAccuracy = acc; },
+    onCompassAlphaChange: (alpha) => { compassAlpha = alpha; },
+    onCompassAbsoluteChange: (abs) => { compassAbsolute = abs; },
+    onHeadingOffsetChange: (offset) => { headingOffset = offset; },
+    onTrackedLocationIdChange: (id) => { trackedLocationId = id; },
+  });
+
+  // Initialize Compass UI module
+  const compassUI = initCompassUI({
+    compassCanvas: document.getElementById('compass-canvas'),
+    calibrationOverlay,
+    compassBtn,
+    debug,
+    showError,
+    // Callbacks to update app.js state
+    onCompassAlphaChange: (alpha) => { compassAlpha = alpha; },
+    onCompassAbsoluteChange: (abs) => { compassAbsolute = abs; },
+    onHeadingOffsetChange: (offset) => { headingOffset = offset; },
+    onIsCalibratedChange: (val) => { isCalibrated = val; },
+    onCompassDirectionChange: (dir) => { compassDirection = dir; },
+    onCompassZeroOffsetChange: (offset) => { compassZeroOffset = offset; },
+    onLevelPitchChange: (pitch) => { levelPitch = pitch; },
+    onLevelRollChange: (roll) => { levelRoll = roll; },
+    onCompassModeChange: (mode) => { compassMode = mode; },
+    onUserPositionChange: (pos) => { userPosition = pos; },
+  });
+
+  // Initialize compass module
+  const compassRate = parseInt(compassRateSlider?.value || '100');
+  startCompass((data) => {
+    // Forward to both modules
+    gpsUI.handleCompassUpdate(data);
+    compassUI.handleCompassUpdate(data);
+  }, { updateRate: compassRate })
+    .then(module => {
+      compassModule = module;
+      debug(`Compass module initialized (rate: ${compassRate}ms, permission on first user gesture)`);
+      // Initialize compass UI with the module
+      compassUI.init(module, compassMode);
+    })
+    .catch(err => {
+      debug('Compass init failed: ' + err.message);
+    });
+
+  // Initialize GPS
   try {
     const gpsRate = parseInt(gpsRateSlider?.value || '10000');
     debug('Starting GPS...');
-    gpsModule = startGPS(handleGPSUpdate, handleGPSError, { updateRateMs: gpsRate });
+    gpsModule = startGPS(
+      (pos) => gpsUI.handleGPSUpdate(pos),
+      (err) => gpsUI.handleGPSError(err),
+      { updateRateMs: gpsRate }
+    );
     debug(`GPS watch started (rate: ${gpsRate / 1000}s)`);
     window.__gpsWatch = gpsModule;
   } catch (err) {
@@ -399,168 +396,17 @@ async function init() {
   animate();
   debug('Animation loop started');
 
-  if (compassBtn) {
-    compassBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      debug('Compass button clicked');
-      try {
-        await requestCompassPermission();
-      } catch (err) {
-        debug('Compass permission failed, continuing without compass');
-      }
-      showCalibration();
-    });
-    compassBtn.addEventListener('touchend', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      debug('Compass button touched');
-      try {
-        await requestCompassPermission();
-      } catch (err) {
-        debug('Compass permission failed, continuing without compass');
-      }
-      showCalibration();
-    }, { passive: false });
-    debug('Compass button event listeners attached');
-  } else {
-    debug('ERROR: compass-btn not found!');
-  }
-  setupCalibrationEvents();
-  setupCurrentLocationEvents();
-
   cameraToggleBtn?.addEventListener('click', () => {
     cameraControls.toggleCamera();
     cameraEnabledCheckbox.checked = state.cameraEnabled;
   });
 
-  if (compassCanvas) {
-    compassDialAbortController = new AbortController();
-    const { signal } = compassDialAbortController;
+  // Pass locations to modules (they need reference for various operations)
+  gpsUI.setLocations(locations);
+  compassUI.setLocations(locations);
 
-    compassCanvas.addEventListener('mousedown', handleCompassDialStart, { signal });
-    window.addEventListener('mousemove', handleCompassDialMove, { signal });
-    window.addEventListener('mouseup', handleCompassDialEnd, { signal });
-
-    compassCanvas.addEventListener('touchstart', handleCompassDialStart, { signal, passive: false });
-    window.addEventListener('touchmove', handleCompassDialMove, { signal, passive: false });
-    window.addEventListener('touchend', handleCompassDialEnd, { signal });
-  }
-
-  minimizeLocationsBtn?.addEventListener('click', () => {
-    locationsPanel.dataset.state = 'minimized';
-    minimizeLocationsBtn.style.display = 'none';
-    maximizeLocationsBtn.style.display = 'flex';
-    debugPane.classList.add('above-panel');
-    toggleLocationsPanel.checked = false;
-    localStorage.setItem('viewfinder:showLocations', false);
-    updateViewportForPanels();
-  });
-  maximizeLocationsBtn?.addEventListener('click', () => {
-    locationsPanel.dataset.state = 'maximized';
-    maximizeLocationsBtn.style.display = 'none';
-    minimizeLocationsBtn.style.display = 'flex';
-    debugPane.classList.remove('above-panel');
-    toggleLocationsPanel.checked = true;
-    localStorage.setItem('viewfinder:showLocations', true);
-    updateViewportForPanels();
-  });
-
-  const locationsTitle = locationsPanel?.querySelector('h3');
-  locationsTitle?.addEventListener('click', () => {
-    if (locationsPanel.dataset.state === 'minimized') {
-      locationsPanel.dataset.state = 'maximized';
-      maximizeLocationsBtn.style.display = 'none';
-      minimizeLocationsBtn.style.display = 'flex';
-      debugPane.classList.remove('above-panel');
-      toggleLocationsPanel.checked = true;
-    } else {
-      locationsPanel.dataset.state = 'minimized';
-      minimizeLocationsBtn.style.display = 'none';
-      maximizeLocationsBtn.style.display = 'flex';
-      debugPane.classList.add('above-panel');
-      toggleLocationsPanel.checked = false;
-    }
-    localStorage.setItem('viewfinder:showLocations', locationsPanel.dataset.state === 'maximized');
-    updateViewportForPanels();
-  });
-
-  minimizeDebugBtn?.addEventListener('click', () => {
-    debugPane.dataset.state = 'minimized';
-    minimizeDebugBtn.style.display = 'none';
-    maximizeDebugBtn.style.display = 'flex';
-    if (locationsPanel.dataset.state === 'minimized') {
-      debugPane.classList.add('above-panel');
-    }
-    toggleDebugPane.checked = false;
-    localStorage.setItem('viewfinder:showDebug', false);
-    updateViewportForPanels();
-  });
-  maximizeDebugBtn?.addEventListener('click', () => {
-    debugPane.dataset.state = 'maximized';
-    maximizeDebugBtn.style.display = 'none';
-    minimizeDebugBtn.style.display = 'flex';
-    debugPane.classList.remove('above-panel');
-    toggleDebugPane.checked = true;
-    localStorage.setItem('viewfinder:showDebug', true);
-    updateViewportForPanels();
-  });
-
-  const debugTitle = debugPane?.querySelector('h3');
-  debugTitle?.addEventListener('click', () => {
-    if (debugPane.dataset.state === 'minimized') {
-      debugPane.dataset.state = 'maximized';
-      maximizeDebugBtn.style.display = 'none';
-      minimizeDebugBtn.style.display = 'flex';
-      debugPane.classList.remove('above-panel');
-      toggleDebugPane.checked = true;
-    } else {
-      debugPane.dataset.state = 'minimized';
-      minimizeDebugBtn.style.display = 'none';
-      maximizeDebugBtn.style.display = 'flex';
-      if (locationsPanel.dataset.state === 'minimized') {
-        debugPane.classList.add('above-panel');
-      }
-      toggleDebugPane.checked = false;
-    }
-    localStorage.setItem('viewfinder:showDebug', debugPane.dataset.state === 'maximized');
-    updateViewportForPanels();
-  });
-
-  // Settings UI is now handled by settings-ui.js module
-  // settingsUI.init() was called earlier in init()
-
-  if (statusGPS) {
-    statusGPS.style.cursor = 'pointer';
-    statusGPS.title = 'Click to copy coordinates';
-    statusGPS.addEventListener('click', () => {
-      if (userPosition) {
-        const lat = userPosition.lat.toFixed(6);
-        const lon = userPosition.lon.toFixed(6);
-        const coords = `${lat},${lon}`;
-        navigator.clipboard.writeText(coords).then(() => {
-          debug(`Copied to clipboard: ${coords}`);
-          // Visual feedback
-          const originalText = statusGPS.textContent;
-          statusGPS.textContent = '📋 Copied!';
-          statusGPS.style.color = '#4ECDC4';
-          setTimeout(() => {
-            statusGPS.textContent = originalText;
-            statusGPS.style.color = '';
-          }, 1500);
-        }).catch(err => {
-          debug('Clipboard copy failed: ' + err.message);
-        });
-      } else {
-        debug('No GPS position to copy');
-      }
-    });
-  }
-
-  // Don't auto-open calibration on first use — the overlay covers the
-  // whole screen and blocks the camera toggle / GPS pill. The canvas
-  // shows "UNCALIBRATED — Tap compass to calibrate" instead, and the
-  // user opens calibration via the compass button when ready.
+  // Store compassUI drawCompass reference for animate()
+  window.compassUIDrawCompass = compassUI.drawCompass;
 
   debug('init() complete');
 }
@@ -582,113 +428,12 @@ function animate() {
     overlay.draw();
   }
 
-  // Draw compass
-  if (compassCtx) {
-    drawCompass(compassAlpha || 0);
+  // Draw compass using compass UI module
+  if (compassCtx && window.compassUIDrawCompass) {
+    window.compassUIDrawCompass(compassAlpha || 0);
   }
 
   requestAnimationFrame(animate);
-}
-
-function handleCompassUpdate(data) {
-  debug(`handleCompassUpdate called: alpha=${data.alpha}, absolute=${data.absolute}, beta=${data.beta}, gamma=${data.gamma}, isLevel=${data.isLevel}`);
-
-  // Apply compass direction fix: some devices report alpha inverted
-  let alpha = data.alpha;
-  if (compassDirection === -1) {
-    // Invert direction: 0->360, 90->270, etc.
-    alpha = (360 - data.alpha) % 360;
-  }
-  // Apply zero offset
-  alpha = (alpha + compassZeroOffset) % 360;
-
-  compassAlpha = alpha;
-  compassAbsolute = data.absolute;
-  // Store level state for UI
-  window.compassIsLevel = data.isLevel;
-  levelPitch = data.beta;
-  levelRoll = data.gamma;
-
-  updateStatus();
-  updateBearingDisplay();
-  // Update current location overlay if open
-  if (currentLocationOverlay.style.display === 'flex') {
-    updateCurrentLocationDisplay();
-  }
-  // Update calibration overlay if open
-  if (calibrationOverlay.style.display === 'flex') {
-    updateCalibrationDisplay();
-  }
-}
-
-function handleGPSUpdate(pos) {
-  userPosition = { lat: pos.lat, lon: pos.lon, alt: pos.alt };
-  gpsAccuracy = pos.accuracy;
-  debug(`GPS: lat=${pos.lat.toFixed(6)}, lon=${pos.lon.toFixed(6)}, alt=${pos.alt}, accuracy=${pos.accuracy}m`);
-  updateStatus();
-  // Update current location overlay if open (distance changes)
-  if (currentLocationOverlay.style.display === 'flex') {
-    updateCurrentLocationDisplay();
-  }
-  // Update calibration overlay if open
-  if (calibrationOverlay.style.display === 'flex') {
-    updateCalibrationDisplay();
-  }
-}
-
-function handleGPSError(err) {
-  debug(`GPS Error: ${err.message} (code: ${err.code})`);
-  showError(`GPS Error: ${err.message}`);
-}
-
-function updateStatus() {
-  if (statusGPS) {
-    if (userPosition && gpsAccuracy !== null) {
-      // Compact: accuracy only — full coords live in the tooltip,
-      // the Current Location overlay, and click-to-copy
-      statusGPS.textContent = `📍 ±${Math.round(gpsAccuracy)}m`;
-      statusGPS.title = `${userPosition.lat.toFixed(6)}, ${userPosition.lon.toFixed(6)} — click to copy`;
-    } else {
-      statusGPS.textContent = `📍 GPS: —`;
-      statusGPS.title = 'Click to copy coordinates';
-    }
-    statusGPS.className = gpsAccuracy && gpsAccuracy < 50 ? 'good' : 'warn';
-  }
-
-  // Update level indicator (text status) — shown only when the tag setting
-  // is on, and hidden when the overlay gauge is active
-  const statusLevel = document.getElementById('status-level');
-  if (statusLevel) {
-    const isLevel = window.compassIsLevel;
-    const gaugeActive = levelIndicatorEnabled && levelPitch !== null;
-    if (levelTagEnabled && isLevel !== undefined && !gaugeActive) {
-      statusLevel.style.display = 'inline-block';
-      statusLevel.textContent = isLevel ? '⚖️ Level' : '⚖️ Tilted';
-      statusLevel.className = isLevel ? 'good' : 'warn';
-    } else {
-      statusLevel.style.display = 'none';
-    }
-  }
-}
-
-function updateBearingDisplay() {
-  const cardinalEl = document.getElementById('bearing-cardinal');
-  const degreesEl = document.getElementById('bearing-degrees');
-  if (!cardinalEl || !degreesEl) return;
-
-  if (compassAlpha === null) {
-    cardinalEl.textContent = '—';
-    degreesEl.textContent = '—°';
-    return;
-  }
-
-  const heading = compassAlpha;
-  const cardinals = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-  const index = Math.round(heading / 22.5) % 16;
-  const cardinal = cardinals[index];
-
-  cardinalEl.textContent = cardinal;
-  degreesEl.textContent = `${Math.round(heading)}°`;
 }
 
 function showError(msg, isError = true) {
@@ -697,266 +442,6 @@ function showError(msg, isError = true) {
   toast.textContent = msg;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
-}
-
-// Calibration UI (landmark-based, from Viewfinder)
-function showCalibration() {
-  calibrationOverlay.style.display = 'flex';
-  // Reset button/result state so a reopen during the "Calibrating..." window
-  // (or after an error) never shows stale state
-  const calibrateBtn = document.getElementById('cal-calibrate-btn');
-  if (calibrateBtn) {
-    calibrateBtn.disabled = false;
-    calibrateBtn.textContent = 'Calibrate Now';
-  }
-  const resultDiv = document.getElementById('cal-result');
-  if (resultDiv) {
-    resultDiv.style.display = 'none';
-    resultDiv.innerHTML = '';
-  }
-  renderCalibrationLocations();
-  updateCalibrationDisplay();
-}
-
-function hideCalibration() {
-  calibrationOverlay.style.display = 'none';
-}
-
-function renderCalibrationLocations() {
-  const select = document.getElementById('cal-location-select');
-  if (!select) return;
-
-  select.innerHTML = locations.map(loc =>
-    `<option value="${loc.id}" style="color: ${loc.color}">${loc.name}</option>`
-  ).join('');
-
-  if (locations.length > 0) {
-    select.value = locations[0].id;
-    selectedCalibrationLocation = locations[0];
-  }
-}
-
-function updateCalibrationDisplay() {
-  const compassEl = document.getElementById('cal-compass');
-  const bearingEl = document.getElementById('cal-bearing');
-  const gpsEl = document.getElementById('cal-gps');
-  if (!compassEl) return;
-
-  compassEl.textContent = compassAlpha !== null ? `${compassAlpha.toFixed(1)}°` : '—';
-
-  if (userPosition && compassAlpha !== null && selectedCalibrationLocation) {
-    const trueBearing = bearing(userPosition, selectedCalibrationLocation);
-    bearingEl.textContent = `${trueBearing.toFixed(1)}°`;
-  } else {
-    bearingEl.textContent = '—';
-  }
-
-  if (userPosition) {
-    gpsEl.textContent = `${userPosition.lat.toFixed(5)}, ${userPosition.lon.toFixed(5)}`;
-    gpsEl.className = 'cal-value good';
-  } else {
-    gpsEl.textContent = 'Waiting...';
-    gpsEl.className = 'cal-value warn';
-  }
-}
-
-function setupCalibrationEvents() {
-  const select = document.getElementById('cal-location-select');
-  const calibrateBtn = document.getElementById('cal-calibrate-btn');
-  const cancelBtn = document.getElementById('cal-cancel-btn');
-  const closeBtn = document.getElementById('cal-close-btn');
-
-  select?.addEventListener('change', (e) => {
-    selectedCalibrationLocation = locations.find(l => l.id === e.target.value) || null;
-    updateCalibrationDisplay();
-  });
-
-  calibrateBtn?.addEventListener('click', handleCalibrate);
-  cancelBtn?.addEventListener('click', hideCalibration);
-  closeBtn?.addEventListener('click', hideCalibration);
-}
-
-function handleCalibrate() {
-  if (!userPosition || compassAlpha === null || !selectedCalibrationLocation) {
-    alert('Need GPS, compass, and a selected location');
-    return;
-  }
-
-  const calibrateBtn = document.getElementById('cal-calibrate-btn');
-  calibrateBtn.disabled = true;
-  calibrateBtn.textContent = 'Calibrating...';
-
-  try {
-    const offset = computeHeadingOffset(compassAlpha, userPosition, selectedCalibrationLocation);
-    const now = Date.now();
-
-    const calData = {
-      headingOffset: offset,
-      calibratedAt: now,
-      landmarkName: selectedCalibrationLocation.name,
-      landmarkPosition: selectedCalibrationLocation,
-    };
-
-    saveCalibration(calData);
-    headingOffset = offset;
-    isCalibrated = true;
-
-    // Show result
-    const resultDiv = document.getElementById('cal-result');
-    resultDiv.innerHTML = `
-      <h4>✅ Calibrated!</h4>
-      <p>Offset: ${offset.toFixed(2)}°</p>
-      <p>Your position: ${userPosition.lat.toFixed(6)}, ${userPosition.lon.toFixed(6)}</p>
-      <p>Time: ${new Date(now).toLocaleTimeString()}</p>
-      <p>Landmark: ${selectedCalibrationLocation.name}</p>
-    `;
-    resultDiv.style.display = 'block';
-
-    setTimeout(() => {
-      // Only auto-close if the overlay is still open on this calibration
-      if (calibrationOverlay.style.display === 'flex') {
-        hideCalibration();
-      }
-      calibrateBtn.disabled = false;
-      calibrateBtn.textContent = 'Calibrate Now';
-    }, 2000);
-  } catch (err) {
-    alert(`Calibration failed: ${err.message}`);
-    calibrateBtn.disabled = false;
-    calibrateBtn.textContent = 'Calibrate Now';
-  }
-}
-
-// Current Location Overlay
-function showCurrentLocationOverlay() {
-  debug('showCurrentLocationOverlay called');
-  if (currentLocationOverlay) {
-    currentLocationOverlay.style.display = 'flex';
-    // Force reflow to ensure display is applied
-    currentLocationOverlay.offsetHeight;
-    updateCurrentLocationDisplay();
-    debug('Current location overlay shown');
-  } else {
-    debug('ERROR: currentLocationOverlay element not found!');
-  }
-}
-
-function hideCurrentLocationOverlay() {
-  debug('hideCurrentLocationOverlay called');
-  if (currentLocationOverlay) {
-    currentLocationOverlay.style.display = 'none';
-    debug('Current location overlay hidden');
-  }
-}
-
-function updateCurrentLocationDisplay() {
-  debug(`updateCurrentLocationDisplay: userPosition=${!!userPosition}, compassAlpha=${compassAlpha}, compassAbsolute=${compassAbsolute}, headingOffset=${headingOffset}`);
-
-  if (!userPosition) {
-    gpsLatEl.textContent = 'Waiting for GPS...';
-    gpsLonEl.textContent = '—';
-    gpsAltEl.textContent = '—';
-    gpsAccEl.textContent = '—';
-    gpsCompassEl.textContent = compassAlpha !== null
-      ? `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`
-      : '—';
-    gpsBearingEl.textContent = '—';
-    return;
-  }
-  gpsLatEl.textContent = userPosition.lat.toFixed(6);
-  gpsLonEl.textContent = userPosition.lon.toFixed(6);
-  gpsAltEl.textContent = userPosition.alt !== undefined ? `${userPosition.alt.toFixed(1)}m` : '—';
-  gpsAccEl.textContent = gpsAccuracy !== null ? `${Math.round(gpsAccuracy)}m` : '—';
-
-  // Compass: raw compass reading
-  gpsCompassEl.textContent = compassAlpha !== null
-    ? `${compassAlpha.toFixed(1)}° (${compassAbsolute ? 'Absolute' : 'Relative'})`
-    : '—';
-
-  // Bearing: calibrated heading (what you're actually facing)
-  if (compassAlpha !== null) {
-    const calibratedHeading = normalizeBearing(compassAlpha - headingOffset);
-    const cardinal = bearingToCardinal(calibratedHeading);
-    gpsBearingEl.textContent = `${cardinal} ${Math.round(calibratedHeading)}°`;
-  } else {
-    gpsBearingEl.textContent = '—';
-  }
-
-  // Bearing to tracked location (relative bearing)
-  if (trackedLocationId && compassAlpha !== null) {
-    const targetLoc = locations.find(l => l.id === trackedLocationId);
-    if (targetLoc) {
-      const trueBearing = bearing(userPosition, targetLoc);
-      const distance = haversineDistance(userPosition, targetLoc);
-      const calibratedBearing = normalizeBearing(trueBearing - headingOffset);
-      const relBearing = normalizeBearing(calibratedBearing - compassAlpha);
-      const cardinal = bearingToCardinal(relBearing);
-      gpsBearingEl.textContent = `${cardinal} ${Math.round(relBearing)}° → ${targetLoc.name} (${formatDistance(distance)})`;
-    }
-  }
-}
-
-function bearingToCardinal(heading) {
-  const cardinals = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-  const index = Math.round(heading / 22.5) % 16;
-  return cardinals[index < 0 ? index + 16 : index];
-}
-
-function setupCurrentLocationEvents() {
-  // Close button - support both click and touch
-  if (currentLocationCloseBtn) {
-    currentLocationCloseBtn.addEventListener('click', hideCurrentLocationOverlay);
-    currentLocationCloseBtn.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      hideCurrentLocationOverlay();
-    }, { passive: false });
-  } else {
-    debug('WARN: current-location-close-btn not found');
-  }
-
-  // Use GPS button - just close overlay
-  if (currentLocationUseGpsBtn) {
-    currentLocationUseGpsBtn.addEventListener('click', () => {
-      debug('Use GPS button clicked');
-      hideCurrentLocationOverlay();
-    });
-    currentLocationUseGpsBtn.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      debug('Use GPS button touched');
-      hideCurrentLocationOverlay();
-    }, { passive: false });
-  } else {
-    debug('WARN: current-location-use-gps-btn not found');
-  }
-
-  // Set Manual Location button
-  if (currentLocationSetManualBtn) {
-    currentLocationSetManualBtn.addEventListener('click', handleSetManualLocation);
-    currentLocationSetManualBtn.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      handleSetManualLocation();
-    }, { passive: false });
-  } else {
-    debug('WARN: current-location-set-manual-btn not found');
-  }
-}
-
-function handleSetManualLocation() {
-  const lat = parseFloat(manualLat.value);
-  const lon = parseFloat(manualLon.value);
-
-  if (isNaN(lat) || isNaN(lon)) {
-    alert('Please enter valid coordinates');
-    return;
-  }
-
-  // Override user position with manual entry
-  userPosition = { lat, lon };
-  gpsAccuracy = 0; // Manual has no accuracy
-  debug(`Manual location set: ${lat.toFixed(6)}, ${lon.toFixed(6)}`);
-  updateStatus();
-  updateCurrentLocationDisplay();
-  hideCurrentLocationOverlay();
 }
 
 // Location List UI
@@ -1097,6 +582,7 @@ function selectLocation(id) {
 
   // Track the selected location (bearing shown in Current Location overlay)
   trackedLocationId = loc.id;
+  gpsUI.setTrackedLocationId(loc.id);
 
   // Show toast
   showLocationToast(loc);
@@ -1214,160 +700,7 @@ function markSelectedSwatch(color) {
   );
 }
 
-// Compass drawing function
-function drawCompass(heading) {
-  if (!compassCtx || !compassCanvas) return;
-
-  const { width, height } = compassCanvas;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const radius = Math.min(width, height) / 2 - 4;
-
-  compassCtx.clearRect(0, 0, width, height);
-
-  if (compassMode === 'fixed') {
-    // FIXED MODE: Wheel stays fixed (N at top), pointer rotates to show heading
-    drawFixedWheel(centerX, centerY, radius, heading);
-  } else {
-    // DYNAMIC MODE: Wheel rotates with heading, pointer fixed at top (original behavior)
-    drawDynamicWheel(centerX, centerY, radius, heading);
-  }
-
-  // Center dot (always same)
-  compassCtx.beginPath();
-  compassCtx.arc(centerX, centerY, 3, 0, Math.PI * 2);
-  compassCtx.fillStyle = '#4ECDC4';
-  compassCtx.fill();
-
-  // Heading text
-  compassCtx.font = 'bold 12px system-ui, sans-serif';
-  compassCtx.fillStyle = '#FFFFFF';
-  compassCtx.textAlign = 'center';
-  compassCtx.textBaseline = 'top';
-  compassCtx.fillText(`${Math.round(heading)}°`, centerX, centerY + radius + 6);
-}
-
-function drawFixedWheel(centerX, centerY, radius, heading) {
-  // Outer ring (fixed)
-  compassCtx.beginPath();
-  compassCtx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-  compassCtx.strokeStyle = isCalibrated ? '#FFFFFF' : '#FFBE0B';
-  compassCtx.lineWidth = 3;
-  compassCtx.stroke();
-
-  // Cardinal directions (fixed - N always at top)
-  const cardinals = ['N', 'E', 'S', 'W'];
-  compassCtx.font = 'bold 14px system-ui, sans-serif';
-  compassCtx.fillStyle = '#FFFFFF';
-  compassCtx.textAlign = 'center';
-  compassCtx.textBaseline = 'middle';
-
-  cardinals.forEach((dir, i) => {
-    const angle = (i * Math.PI / 2) - Math.PI / 2; // 0° = North (up)
-    const x = centerX + Math.cos(angle) * (radius - 15);
-    const y = centerY + Math.sin(angle) * (radius - 15);
-    compassCtx.fillText(dir, x, y);
-  });
-
-  // Degree marks every 30° (fixed)
-  compassCtx.strokeStyle = 'rgba(255,255,255,0.5)';
-  compassCtx.lineWidth = 1;
-  for (let i = 0; i < 12; i++) {
-    const angle = (i * Math.PI / 6) - Math.PI / 2; // 0° = North (up)
-    const inner = radius - 8;
-    const outer = radius;
-    compassCtx.beginPath();
-    compassCtx.moveTo(centerX + Math.cos(angle) * inner, centerY + Math.sin(angle) * inner);
-    compassCtx.lineTo(centerX + Math.cos(angle) * outer, centerY + Math.sin(angle) * outer);
-    compassCtx.stroke();
-  }
-
-  // Heading pointer (rotates to show current heading)
-  // No fixed red triangle at N - the pointer IS the indicator
-  compassCtx.save();
-  compassCtx.translate(centerX, centerY);
-  // Rotate to heading: 0° = North (up), so we rotate by heading degrees clockwise
-  compassCtx.rotate(heading * Math.PI / 180);
-
-  // Draw the heading pointer (triangle pointing up = North)
-  compassCtx.fillStyle = isCalibrated ? '#4ECDC4' : '#FFBE0B';
-  compassCtx.beginPath();
-  compassCtx.moveTo(0, -radius + 8); // Tip of pointer at top
-  compassCtx.lineTo(-8, -radius + 22); // Left base
-  compassCtx.lineTo(8, -radius + 22);  // Right base
-  compassCtx.closePath();
-  compassCtx.fill();
-
-  // Add a small line extending from center to pointer base for clarity
-  compassCtx.strokeStyle = isCalibrated ? '#4ECDC4' : '#FFBE0B';
-  compassCtx.lineWidth = 2;
-  compassCtx.lineCap = 'round';
-  compassCtx.beginPath();
-  compassCtx.moveTo(0, 0);
-  compassCtx.lineTo(0, -radius + 12);
-  compassCtx.stroke();
-
-  compassCtx.restore();
-}
-
-function drawDynamicWheel(centerX, centerY, radius, heading) {
-  // In dynamic mode, rotate the entire wheel so that the current heading points UP
-  // This is the original behavior: wheel spins, N moves to show where North is relative to you
-  compassCtx.save();
-  compassCtx.translate(centerX, centerY);
-
-  // FIRST: Draw the fixed pointer at top of screen (12 o'clock) BEFORE rotating
-  // This shows "you are here" - the device orientation relative to the spinning wheel
-  compassCtx.fillStyle = '#FF6B6B';
-  compassCtx.beginPath();
-  compassCtx.moveTo(0, -radius + 5);
-  compassCtx.lineTo(-6, -radius + 16);
-  compassCtx.lineTo(6, -radius + 16);
-  compassCtx.closePath();
-  compassCtx.fill();
-
-  // THEN: Rotate the wheel so that heading points UP (North at top of screen)
-  // Canvas 0° = East, we want heading = North (up), so rotate by -(90° + heading)
-  compassCtx.rotate(-Math.PI / 2 - heading * Math.PI / 180);
-
-  // Outer ring
-  compassCtx.beginPath();
-  compassCtx.arc(0, 0, radius, 0, Math.PI * 2);
-  compassCtx.strokeStyle = isCalibrated ? '#FFFFFF' : '#FFBE0B';
-  compassCtx.lineWidth = 3;
-  compassCtx.stroke();
-
-  // Cardinal directions (rotate with wheel)
-  const cardinals = ['N', 'E', 'S', 'W'];
-  compassCtx.font = 'bold 14px system-ui, sans-serif';
-  compassCtx.fillStyle = '#FFFFFF';
-  compassCtx.textAlign = 'center';
-  compassCtx.textBaseline = 'middle';
-
-  cardinals.forEach((dir, i) => {
-    const angle = (i * Math.PI / 2);
-    const x = Math.cos(angle) * (radius - 15);
-    const y = Math.sin(angle) * (radius - 15);
-    compassCtx.fillText(dir, x, y);
-  });
-
-  // Degree marks every 30°
-  compassCtx.strokeStyle = 'rgba(255,255,255,0.5)';
-  compassCtx.lineWidth = 1;
-  for (let i = 0; i < 12; i++) {
-    const angle = i * Math.PI / 6;
-    const inner = radius - 8;
-    const outer = radius;
-    compassCtx.beginPath();
-    compassCtx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
-    compassCtx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
-    compassCtx.stroke();
-  }
-
-  compassCtx.restore();
-}
-
-// Module initialization
+// Initialize everything when DOM ready
 document.addEventListener('DOMContentLoaded', () => {
   setupLocationForm();
   init();
