@@ -288,10 +288,6 @@ async function init() {
     get() { return gpsModule; },
     set(v) { gpsModule = v; }
   });
-  Object.defineProperty(state, 'cameraEnabled', {
-    get() { return cameraEnabled; },
-    set(v) { cameraEnabled = v; }
-  });
   Object.defineProperty(state, 'compassMode', {
     get() { return compassMode; },
     set(v) {
