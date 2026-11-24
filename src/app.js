@@ -299,7 +299,7 @@ async function init() {
 
   // Initialize settings UI
   const state = {
-    cameraEnabled,
+    cameraEnabled: false,
     cameraDefaultOn: cameraDefaultOnCheckbox?.checked || false,
     compassDirection,
     compassRate,
@@ -313,12 +313,7 @@ async function init() {
     compassModule: null,
     gpsModule: null,
     onCameraToggle: (enabled) => {
-      cameraEnabled = enabled;
-      if (enabled && !cameraEnabled) {
-        toggleCamera();
-      } else if (!enabled && cameraEnabled) {
-        toggleCamera();
-      }
+      state.cameraEnabled = enabled;
     },
     onLevelTagChange: () => {
       updateStatus();
@@ -349,7 +344,7 @@ async function init() {
 
   // Make camera controls available globally for settings callbacks
   state.onCameraToggle = (enabled) => {
-    cameraEnabled = enabled;
+    state.cameraEnabled = enabled;
     if (enabled && !state.cameraEnabled) {
       cameraControls.toggleCamera();
     } else if (!enabled && state.cameraEnabled) {
@@ -371,10 +366,7 @@ async function init() {
     get() { return gpsModule; },
     set(v) { gpsModule = v; }
   });
-  Object.defineProperty(state, 'cameraEnabled', {
-    get() { return cameraEnabled; },
-    set(v) { cameraEnabled = v; }
-  });
+  // cameraEnabled is already a property of state object, no getter/setter needed
 
   try {
     const gpsRate = parseInt(gpsRateSlider?.value || '10000');
