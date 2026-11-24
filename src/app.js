@@ -366,7 +366,6 @@ async function init() {
     get() { return gpsModule; },
     set(v) { gpsModule = v; }
   });
-  // cameraEnabled is already a property of state object, no getter/setter needed
 
   try {
     const gpsRate = parseInt(gpsRateSlider?.value || '10000');
