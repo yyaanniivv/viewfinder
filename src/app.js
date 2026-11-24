@@ -4,21 +4,6 @@
  */
 
 import { Overlay } from './overlay.js';
-import {
-  startCamera,
-  stopCamera,
-  switchCamera,
-  cycleCamera,
-  setZoom,
-  getCurrentZoom,
-  getAvailableZoomLevels,
-  setAvailableZoomLevels,
-  cycleZoomLevel,
-  cycleZoomLevelBack,
-  setupPinchZoom,
-  getAvailableCameras,
-  DEFAULT_ZOOM_LEVELS
-} from './camera.js';
 import { startCompass } from './compass.js';
 import { startGPS } from './gps.js';
 
@@ -27,6 +12,7 @@ import { loadCalibration, saveCalibration, computeHeadingOffset, hasValidCalibra
 import { normalizeBearing, formatDistance, haversineDistance, bearing } from './geo.js';
 import { loadSettings, updateSetting, getSetting } from './settings.js';
 import { initSettingsUI } from './settings-ui.js';
+import { initCameraControls } from './camera-controls.js';
 
 const video = document.getElementById('camera');
 const canvas = document.getElementById('overlay');
@@ -131,10 +117,6 @@ let levelIndicatorEnabled = false;
 let levelTagEnabled = false;
 let laneModeEnabled = false;
 let cleanWheelEnabled = true;
-
-let availableZoomLevels = [...DEFAULT_ZOOM_LEVELS];
-let currentZoomLevel = 1;
-let pinchZoomCleanup = null;
 
 let panelsVisible = false;
 let compassMode = 'fixed'; // 'fixed' = N/E/S/W fixed, pointer rotates | 'dynamic' = wheel spins, pointer fixed at top
@@ -353,6 +335,30 @@ async function init() {
     updateViewportForPanels,
     state,
   });
+
+  // Initialize camera controls
+  const cameraControls = initCameraControls({
+    video,
+    cameraToggleBtn,
+    zoomIndicator,
+    lensSwitchBtn,
+    debug,
+    showError,
+    state,
+  });
+
+  // Make camera controls available globally for settings callbacks
+  state.onCameraToggle = (enabled) => {
+    cameraEnabled = enabled;
+    if (enabled && !state.cameraEnabled) {
+      cameraControls.toggleCamera();
+    } else if (!enabled && state.cameraEnabled) {
+      cameraControls.toggleCamera();
+    }
+  };
+  state.onLevelTagChange = () => {
+    updateStatus();
+  };
 
   // Sync modules with state after they're initialized
   const originalCompassModule = compassModule;
@@ -642,258 +648,6 @@ function handleGPSUpdate(pos) {
 function handleGPSError(err) {
   debug(`GPS Error: ${err.message} (code: ${err.code})`);
   showError(`GPS Error: ${err.message}`);
-}
-
-let cameraStream = null;
-let cameraEnabled = false;
-
-async function toggleCamera() {
-  if (!cameraEnabled) {
-    try {
-      debug('Starting camera...');
-      cameraStream = await startCamera(video, { zoom: currentZoomLevel });
-      video.style.display = 'block';
-      cameraToggleBtn.querySelector('.camera-icon-off').style.display = 'none';
-      cameraToggleBtn.querySelector('.camera-icon-on').style.display = 'block';
-      cameraToggleBtn.classList.remove('off');
-      cameraToggleBtn.title = 'Turn off camera';
-      cameraToggleBtn.setAttribute('aria-pressed', 'true');
-      cameraToggleBtn.setAttribute('aria-label', 'Turn off camera');
-      cameraEnabled = true;
-      localStorage.setItem('viewfinder:cameraEnabled', true);
-      debug('Camera started');
-
-      setupZoomControls();
-      setupLensSwitch();
-    } catch (err) {
-      debug('Camera error: ' + err.message);
-      showError(`Camera: ${err.message}`);
-    }
-  } else {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
-      cameraStream = null;
-    }
-    video.style.display = 'none';
-    cameraToggleBtn.querySelector('.camera-icon-off').style.display = 'block';
-    cameraToggleBtn.querySelector('.camera-icon-on').style.display = 'none';
-    cameraToggleBtn.classList.add('off');
-    cameraToggleBtn.title = 'Turn on camera';
-    cameraToggleBtn.setAttribute('aria-pressed', 'false');
-    cameraToggleBtn.setAttribute('aria-label', 'Turn on camera');
-    cameraEnabled = false;
-    localStorage.setItem('viewfinder:cameraEnabled', false);
-    debug('Camera stopped');
-
-    cleanupZoomControls();
-    cleanupLensSwitch();
-  }
-}
-
-function setupZoomControls() {
-  const defaultLevels = [1, 2, 5, 10];
-  availableZoomLevels = defaultLevels;
-  setAvailableZoomLevels(defaultLevels);
-
-  currentZoomLevel = getCurrentZoom();
-  updateZoomIndicator();
-
-  const zoomButtonsEnabled = localStorage.getItem('viewfinder:zoomButtonsEnabled') !== 'false';
-  if (zoomButtonsEnabled && zoomIndicator) {
-    zoomIndicator.style.display = 'flex';
-  }
-
-  const zoomCycleEnabled = localStorage.getItem('viewfinder:zoomCycleEnabled') !== 'false';
-  if (zoomCycleEnabled && zoomIndicator) {
-    zoomIndicator.onclick = () => handleZoomCycle();
-    zoomIndicator.style.cursor = 'pointer';
-  } else if (zoomIndicator) {
-    zoomIndicator.onclick = null;
-    zoomIndicator.style.cursor = 'default';
-  }
-
-  const zoomGestureEnabled = localStorage.getItem('viewfinder:zoomGestureEnabled') !== 'false';
-  if (zoomGestureEnabled && video) {
-    pinchZoomCleanup = setupPinchZoom(video, (newZoom) => {
-      currentZoomLevel = newZoom;
-      updateZoomIndicator();
-      debug(`Pinch zoom: ${newZoom}×`);
-    });
-  }
-
-  setupZoomSettings();
-}
-
-/**
- * Cleanup zoom controls
- */
-function cleanupZoomControls() {
-  if (zoomIndicator) {
-    zoomIndicator.style.display = 'none';
-  }
-  if (pinchZoomCleanup) {
-    pinchZoomCleanup();
-    pinchZoomCleanup = null;
-  }
-}
-
-/**
- * Update zoom indicator display
- */
-function updateZoomIndicator() {
-  if (zoomIndicator) {
-    zoomIndicator.textContent = `${currentZoomLevel}×`;
-  }
-}
-
-/**
- * Handle zoom cycle (tap zoom indicator)
- */
-function handleZoomCycle() {
-  if (!cameraStream || !video) return;
-
-  const newZoom = cycleZoomLevel();
-  applyZoom(newZoom);
-}
-
-/**
- * Apply zoom level to camera
- * @param {number} zoom - Zoom level to apply
- */
-async function applyZoom(zoom) {
-  if (!cameraStream) return;
-
-  const track = cameraStream.getVideoTracks()[0];
-  if (!track) return;
-
-  try {
-    const success = await setZoom(track, zoom);
-    if (success) {
-      currentZoomLevel = zoom;
-      updateZoomIndicator();
-      debug(`Zoom changed to ${zoom}×`);
-    } else {
-      debug(`Failed to set zoom to ${zoom}×`);
-    }
-  } catch (err) {
-    debug(`Zoom error: ${err.message}`);
-  }
-}
-
-/**
- * Setup zoom settings listeners
- */
-function setupZoomSettings() {
-  // Pinch gesture toggle
-  if (zoomGestureEnabledCheckbox) {
-    const saved = localStorage.getItem('viewfinder:zoomGestureEnabled');
-    zoomGestureEnabledCheckbox.checked = saved !== 'false';
-
-    zoomGestureEnabledCheckbox.addEventListener('change', (e) => {
-      const enabled = e.target.checked;
-      localStorage.setItem('viewfinder:zoomGestureEnabled', enabled);
-
-      if (enabled && video && cameraEnabled) {
-        pinchZoomCleanup = setupPinchZoom(video, (newZoom) => {
-          currentZoomLevel = newZoom;
-          updateZoomIndicator();
-          debug(`Pinch zoom: ${newZoom}×`);
-        });
-        debug('Pinch-to-zoom enabled');
-      } else if (!enabled && pinchZoomCleanup) {
-        pinchZoomCleanup();
-        pinchZoomCleanup = null;
-        debug('Pinch-to-zoom disabled');
-      }
-    });
-  }
-
-  // Zoom buttons toggle
-  if (zoomButtonsEnabledCheckbox) {
-    const saved = localStorage.getItem('viewfinder:zoomButtonsEnabled');
-    zoomButtonsEnabledCheckbox.checked = saved !== 'false';
-
-    zoomButtonsEnabledCheckbox.addEventListener('change', (e) => {
-      const enabled = e.target.checked;
-      localStorage.setItem('viewfinder:zoomButtonsEnabled', enabled);
-
-      if (zoomIndicator) {
-        zoomIndicator.style.display = enabled && cameraEnabled ? 'flex' : 'none';
-      }
-      debug(`Zoom indicator ${enabled ? 'shown' : 'hidden'}`);
-    });
-  }
-
-  // Zoom cycle toggle (tap indicator to cycle)
-  if (zoomCycleEnabledCheckbox) {
-    const saved = localStorage.getItem('viewfinder:zoomCycleEnabled');
-    zoomCycleEnabledCheckbox.checked = saved !== 'false';
-
-    zoomCycleEnabledCheckbox.addEventListener('change', (e) => {
-      const enabled = e.target.checked;
-      localStorage.setItem('viewfinder:zoomCycleEnabled', enabled);
-
-      if (zoomIndicator) {
-        if (enabled) {
-          zoomIndicator.onclick = () => handleZoomCycle();
-          zoomIndicator.style.cursor = 'pointer';
-        } else {
-          zoomIndicator.onclick = null;
-          zoomIndicator.style.cursor = 'default';
-        }
-      }
-      debug(`Zoom cycle ${enabled ? 'enabled' : 'disabled'}`);
-    });
-  }
-}
-
-/**
- * Setup lens switch button
- */
-async function setupLensSwitch() {
-  if (!lensSwitchBtn) return;
-
-  // Use rearOnly=true to only show rear-facing cameras for lens switching
-  const devices = await getAvailableCameras(true);
-  if (devices.length <= 1) {
-    // Only one camera, hide the lens switch button
-    lensSwitchBtn.style.display = 'none';
-    return;
-  }
-
-  // Show lens switch button when camera is on
-  lensSwitchBtn.style.display = 'flex';
-
-  // Set up click handler
-  lensSwitchBtn.onclick = async () => {
-    if (!cameraStream || !cameraEnabled) return;
-
-    try {
-      debug('Switching camera lens...');
-      const result = await cycleCamera(video, cameraStream);
-      cameraStream = result.stream;
-
-      // Update zoom indicator after lens switch (zoom may have been clamped)
-      currentZoomLevel = getCurrentZoom();
-      updateZoomIndicator();
-
-      debug(`Switched to lens: ${result.label}`);
-      showError(`Lens: ${result.label}`, false); // Show lens name as toast
-    } catch (err) {
-      debug(`Lens switch error: ${err.message}`);
-      showError(`Failed to switch lens: ${err.message}`);
-    }
-  };
-}
-
-/**
- * Cleanup lens switch button
- */
-function cleanupLensSwitch() {
-  if (lensSwitchBtn) {
-    lensSwitchBtn.style.display = 'none';
-    lensSwitchBtn.onclick = null;
-  }
 }
 
 function updateStatus() {
@@ -1469,12 +1223,6 @@ function markSelectedSwatch(color) {
   );
 }
 
-// Initialize everything when DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-  setupLocationForm();
-  init();
-});
-
 // Compass drawing function
 function drawCompass(heading) {
   if (!compassCtx || !compassCanvas) return;
@@ -1627,3 +1375,9 @@ function drawDynamicWheel(centerX, centerY, radius, heading) {
 
   compassCtx.restore();
 }
+
+// Module initialization
+document.addEventListener('DOMContentLoaded', () => {
+  setupLocationForm();
+  init();
+});
