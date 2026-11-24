@@ -1,9 +1,9 @@
 /**
  * Debug Pane module for Viewfinder
- * Handles debug log UI
+ * Handles debug log UI - subscribes to debug-log module
  */
 
-import { initToasts } from './toasts.js';
+import { debugLog, subscribeToDebugLog } from './debug-log.js';
 
 /**
  * Initialize debug pane
@@ -13,7 +13,6 @@ import { initToasts } from './toasts.js';
  * @param {HTMLElement} deps.minimizeDebugBtn - Minimize button
  * @param {HTMLElement} deps.maximizeDebugBtn - Maximize button
  * @param {HTMLElement} deps.clearDebugBtn - Clear button
- * @param {Function} [deps.debug] - Debug logging function
  * @param {Function} [deps.updateViewportForPanels] - Callback to update viewport
  * @returns {Object} Debug pane API
  */
@@ -24,15 +23,12 @@ export function initDebugPane(deps) {
     minimizeDebugBtn,
     maximizeDebugBtn,
     clearDebugBtn,
-    debug = console.log,
     updateViewportForPanels,
   } = deps;
 
   // State
   let isMinimized = true;
-
-  // Toast for user feedback
-  const { showInfo } = initToasts({ debug });
+  let unsubscribe = null;
 
   /**
    * Show debug pane
@@ -46,7 +42,6 @@ export function initDebugPane(deps) {
     isMinimized = false;
     localStorage.setItem('viewfinder:showDebug', 'true');
     updateViewportForPanels?.();
-    debug('Debug pane shown');
   }
 
   /**
@@ -61,7 +56,6 @@ export function initDebugPane(deps) {
     isMinimized = true;
     localStorage.setItem('viewfinder:showDebug', 'false');
     updateViewportForPanels?.();
-    debug('Debug pane hidden');
   }
 
   /**
@@ -79,22 +73,26 @@ export function initDebugPane(deps) {
    * Clear debug log
    */
   function clear() {
-    if (debugContent) {
-      debugContent.innerHTML = '';
-      showInfo('Debug log cleared');
-      debug('Debug log cleared');
-    }
+    debugLog.clear();
   }
 
   /**
-   * Add a log entry
-   * @param {string} message - Log message
+   * Render a log entry to the UI
+   * @param {Object} entry - Log entry {message, level, time}
+   * @param {number} index - Entry index
    */
-  function log(message) {
+  function renderEntry(entry, index) {
     if (!debugContent) return;
-    const timestamp = new Date().toLocaleTimeString();
+
+    // Handle clear signal
+    if (entry === null && index === -1) {
+      debugContent.innerHTML = '';
+      return;
+    }
+
     const line = document.createElement('div');
-    line.textContent = `[${timestamp}] ${message}`;
+    line.className = `debug-entry debug-${entry.level}`;
+    line.textContent = `[${entry.time}] ${entry.message}`;
     debugContent.appendChild(line);
     debugContent.scrollTop = debugContent.scrollHeight;
   }
@@ -128,6 +126,9 @@ export function initDebugPane(deps) {
     clearDebugBtn.addEventListener('click', clear);
   }
 
+  // Subscribe to debug log
+  unsubscribe = subscribeToDebugLog(renderEntry);
+
   // Load initial state
   loadPersistedState();
 
@@ -136,8 +137,10 @@ export function initDebugPane(deps) {
     hide,
     toggle,
     clear,
-    log,
     loadPersistedState,
     isMinimized: () => isMinimized,
+    destroy: () => {
+      if (unsubscribe) unsubscribe();
+    },
   };
 }

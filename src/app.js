@@ -33,6 +33,7 @@ import { initCameraControls } from './camera-controls.js';
 import { initLocationsPanel } from './locations-panel.js';
 import { initDebugPane } from './debug-pane.js';
 import { initToasts } from './toasts.js';
+import { debugLog, debug } from './debug-log.js';
 
 const video = document.getElementById('camera');
 const canvas = document.getElementById('overlay');
@@ -114,6 +115,7 @@ const zoomCycleEnabledCheckbox = document.getElementById('zoom-cycle-enabled');
 
 let compassModule = null;
 let gpsModule = null;
+let locationsPanelAPI = null;
 
 let userPosition = null;
 let gpsAccuracy = null;
@@ -142,11 +144,6 @@ let cleanWheelEnabled = true;
 let panelsVisible = false;
 let compassMode = 'fixed'; // 'fixed' = N/E/S/W fixed, pointer rotates | 'dynamic' = wheel spins, pointer fixed at top
 
-// Early debug function (before init() defines the full one)
-function earlyDebug(msg) {
-  console.log('[App]', msg);
-}
-
 /**
  * Update camera viewport for bottom panels
  * With flex layout, panels are in normal flow below viewport
@@ -159,7 +156,7 @@ function updateViewportForPanels() {
 
   if (panelsVisibleNow !== panelsVisible) {
     panelsVisible = panelsVisibleNow;
-    earlyDebug(`Panels visibility changed: ${panelsVisible}`);
+    debug(`Panels visibility changed: ${panelsVisible}`);
   }
 
   // Update container data attribute for CSS border-radius styling
@@ -170,25 +167,18 @@ function updateViewportForPanels() {
 async function init() {
   console.log('[App] init() started');
 
-  // Initialize debug pane first (so debug logs work)
+  // Initialize debug pane first (it subscribes to debug-log internally)
   const debugPaneAPI = initDebugPane({
     debugPane,
     debugContent,
     minimizeDebugBtn,
     maximizeDebugBtn,
     clearDebugBtn,
-    debug: console.log,
     updateViewportForPanels,
   });
 
   // Initialize toasts
-  const toasts = initToasts({ debug: console.log });
-
-  // Wrap debug to also log to debug pane
-  function debug(msg) {
-    console.log('[App]', msg);
-    debugPaneAPI.log(msg);
-  }
+  const toasts = initToasts({ debug: (msg) => debugLog.log(msg, 'info') });
 
   debug('Starting init...');
 
@@ -199,7 +189,7 @@ async function init() {
   }
 
   // Initialize locations panel
-  const locationsPanelAPI = initLocationsPanel({
+  locationsPanelAPI = initLocationsPanel({
     locationsPanel,
     locationList,
     locationForm,
@@ -211,7 +201,7 @@ async function init() {
     locationCountEl,
     minimizeLocationsBtn,
     maximizeLocationsBtn,
-    debug,
+    debug: (msg) => debugLog.log(msg, 'info'),
     updateViewportForPanels,
     onTrackedLocationChange: (id) => {
       trackedLocationId = id;
@@ -281,7 +271,7 @@ async function init() {
     settingsCloseBtn,
     settingsVersion,
     versionBadge,
-    debug,
+    debug: (msg) => debugLog.log(msg, 'info'),
     updateViewportForPanels,
     state,
   });
@@ -292,7 +282,7 @@ async function init() {
     cameraToggleBtn,
     zoomIndicator,
     lensSwitchBtn,
-    debug,
+    debug: (msg) => debugLog.log(msg, 'info'),
     showError: toasts.showError,
     state,
   });
@@ -342,7 +332,7 @@ async function init() {
     gpsAccEl,
     gpsCompassEl,
     gpsBearingEl,
-    debug,
+    debug: (msg) => debugLog.log(msg, 'info'),
     showError: toasts.showError,
     // Callbacks to update app.js state
     onUserPositionChange: (pos) => { userPosition = pos; },
@@ -358,7 +348,7 @@ async function init() {
     compassCanvas: document.getElementById('compass-canvas'),
     calibrationOverlay,
     compassBtn,
-    debug,
+    debug: (msg) => debugLog.log(msg, 'info'),
     showError: toasts.showError,
     // Callbacks to update app.js state
     onCompassAlphaChange: (alpha) => { compassAlpha = alpha; },
@@ -443,7 +433,7 @@ async function init() {
 }
 
 function animate() {
-  if (overlay) {
+  if (overlay && locationsPanelAPI) {
     overlay.update({
       locations: locationsPanelAPI.getLocationsArray(),
       userPosition,
