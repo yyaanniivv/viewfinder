@@ -84,7 +84,6 @@ export function initDebugPane(deps) {
   function renderEntry(entry, index) {
     if (!debugContent) return;
 
-    // Handle clear signal
     if (entry === null && index === -1) {
       debugContent.innerHTML = '';
       return;
@@ -110,7 +109,6 @@ export function initDebugPane(deps) {
         hide();
       }
     } else {
-      // Default to minimized
       hide();
     }
   }
@@ -132,7 +130,8 @@ export function initDebugPane(deps) {
   // Load initial state
   loadPersistedState();
 
-  return {
+  // Expose API for testing
+  const api = {
     show,
     hide,
     toggle,
@@ -143,4 +142,10 @@ export function initDebugPane(deps) {
       if (unsubscribe) unsubscribe();
     },
   };
+
+  if (typeof window !== 'undefined') {
+    window.__debugPaneAPI = api;
+  }
+
+  return api;
 }

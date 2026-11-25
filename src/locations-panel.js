@@ -127,7 +127,6 @@ export function initLocationsPanel(deps) {
    * @param {HTMLElement} list - List element
    */
   function attachLocationListEvents(list) {
-    // Visibility toggle
     list.querySelectorAll('.visibility-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -135,7 +134,6 @@ export function initLocationsPanel(deps) {
       });
     });
 
-    // Edit button
     list.querySelectorAll('.edit-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -143,7 +141,6 @@ export function initLocationsPanel(deps) {
       });
     });
 
-    // Delete button
     list.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -151,7 +148,6 @@ export function initLocationsPanel(deps) {
       });
     });
 
-    // Select location (click on info area)
     list.querySelectorAll('.location-info').forEach(info => {
       info.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -224,10 +220,8 @@ export function initLocationsPanel(deps) {
     const loc = locations.find(l => l.id === id);
     if (!loc) return;
 
-    // Track the selected location (bearing shown in Current Location overlay)
     onTrackedLocationChange?.(loc.id);
 
-    // Show toast with location details
     const userPosition = getUserPosition?.();
     const distance = userPosition
       ? formatDistance(haversineDistance(userPosition, loc))
@@ -263,7 +257,6 @@ export function initLocationsPanel(deps) {
   function setupLocationForm() {
     if (!locationForm) return;
 
-    // Swatch picker: click sets the hidden color input and highlights the selected swatch
     if (locColorSwatches) {
       locColorSwatches.addEventListener('click', (e) => {
         const btn = e.target.closest('.color-swatch');
@@ -275,7 +268,6 @@ export function initLocationsPanel(deps) {
       });
     }
 
-    // Form submit
     locationForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const editId = locationForm.dataset.editId;
@@ -290,7 +282,6 @@ export function initLocationsPanel(deps) {
 
       let color = document.getElementById('loc-color').value;
       if (!color) {
-        // Default for a new location opened without swatch selection
         color = getNextColor(locations);
       }
 
@@ -318,18 +309,15 @@ export function initLocationsPanel(deps) {
       hideLocationForm();
     });
 
-    // Cancel button
     if (locCancelBtn) {
       locCancelBtn.addEventListener('click', hideLocationForm);
     }
 
-    // Add location button
     if (addLocationBtn) {
       addLocationBtn.addEventListener('click', () => {
         if (locationForm) locationForm.reset();
         delete locationForm.dataset.editId;
         showLocationForm();
-        // Highlight the suggested color for the new location
         markSelectedSwatch(getNextColor(locations));
       });
     }
@@ -400,35 +388,8 @@ export function initLocationsPanel(deps) {
         hide();
       }
     } else {
-      // Default to minimized
       hide();
     }
-  }
-
-  /**
-   * Initialize the panel with locations
-   * @param {Array} locs - Locations array
-   */
-  function setLocations(locs) {
-    locations = locs;
-    renderLocationList();
-  }
-
-  /**
-   * Add locations (e.g., sample locations)
-   * @param {Array} locs - Locations to add
-   */
-  function addLocations(locs) {
-    locations = locations.concat(locs);
-    renderLocationList();
-  }
-
-  /**
-   * Get current locations
-   * @returns {Array} Locations array
-   */
-  function getLocationsArray() {
-    return locations;
   }
 
   // Set up event listeners for panel controls
@@ -459,7 +420,8 @@ export function initLocationsPanel(deps) {
   // Load initial state
   loadPersistedState();
 
-  return {
+  // Expose API for testing
+  const api = {
     show,
     hide,
     toggle,
@@ -471,4 +433,10 @@ export function initLocationsPanel(deps) {
     loadPersistedState,
     isMinimized: () => isMinimized,
   };
+
+  if (typeof window !== 'undefined') {
+    window.__locationsPanelAPI = api;
+  }
+
+  return api;
 }

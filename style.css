@@ -448,8 +448,28 @@ input, select, button {
   display: none !important;
 }
 
+#locations-panel[data-state="maximized"] #minimize-locations-btn {
+  display: flex !important;
+}
+
+#locations-panel[data-state="maximized"] #maximize-locations-btn {
+  display: none !important;
+}
+
 .debug-pane[data-state="minimized"] #maximize-debug-btn {
   display: flex !important;
+}
+
+.debug-pane[data-state="minimized"] #minimize-debug-btn {
+  display: none !important;
+}
+
+.debug-pane[data-state="maximized"] #minimize-debug-btn {
+  display: flex !important;
+}
+
+.debug-pane[data-state="maximized"] #maximize-debug-btn {
+  display: none !important;
 }
 
 .panel[data-state="maximized"] .panel-header {
