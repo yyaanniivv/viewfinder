@@ -238,6 +238,48 @@ Persisted to `localStorage` (survives reload).
 - Share location list via QR/URL
 - React Native port (native ARKit/ARCore)
 
+## Testing
+
+### Playwright (E2E)
+
+```bash
+# Install dependencies (one-time)
+npm install
+npx playwright install chromium
+
+# Run all tests
+npx playwright test
+
+# Run with UI
+npx playwright test --ui
+
+# Run specific test file
+npx playwright test tests/app.spec.js
+
+# Run headed (visible browser)
+npx playwright test --headed
+```
+
+### What the tests cover
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `tests/app.spec.js` | 22 | Camera toggle, locations panel, debug pane, compass, settings overlay, location list, zoom indicator |
+| `tests/debug-pane.spec.js` | 6 | Debug pane minimize/maximize/clear, settings toggle, console errors |
+
+### Test Architecture
+
+- **Module APIs exposed for testing**: `window.__locationsPanelAPI`, `window.__debugPaneAPI`
+- **localStorage cleared** before each test via `addInitScript`
+- **HTTPS server** (`simple-server.cjs`) started automatically by Playwright config
+- **Chromium headless** by default, `--headed` for debugging
+
+### Known Limitations
+
+- Tests share `localStorage` across browser context — some tests may have state bleed
+- Module initialization timing can cause flaky tests
+- Manual testing in real browsers confirms all toggles work correctly
+
 ## License
 
 MIT — Build your own digital toposcope.
