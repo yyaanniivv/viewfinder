@@ -350,18 +350,19 @@ export function initLocationsPanel(deps) {
   }
 
   /**
-   * Hide locations panel
+   * Hide locations panel (minimize to header bar)
    */
   function hide() {
     if (!locationsPanel) return;
-    locationsPanel.style.display = 'none';
+    // Don't set display: none - CSS handles minimized state via data-state
+    // Panel stays visible as a header bar (max-height: 42px)
     locationsPanel.dataset.state = 'minimized';
     if (minimizeLocationsBtn) minimizeLocationsBtn.style.display = 'none';
     if (maximizeLocationsBtn) maximizeLocationsBtn.style.display = 'flex';
     isMinimized = true;
     localStorage.setItem('viewfinder:showLocations', 'false');
     updateViewportForPanels?.();
-    debug('Locations panel hidden');
+    debug('Locations panel minimized');
   }
 
   /**

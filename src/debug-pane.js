@@ -45,11 +45,12 @@ export function initDebugPane(deps) {
   }
 
   /**
-   * Hide debug pane
+   * Hide debug pane (minimize to header bar)
    */
   function hide() {
     if (!debugPane) return;
-    debugPane.style.display = 'none';
+    // Don't set display: none - CSS handles minimized state via data-state
+    // Panel stays visible as a header bar (max-height: 42px)
     debugPane.dataset.state = 'minimized';
     if (minimizeDebugBtn) minimizeDebugBtn.style.display = 'none';
     if (maximizeDebugBtn) maximizeDebugBtn.style.display = 'flex';
