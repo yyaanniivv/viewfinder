@@ -472,6 +472,14 @@ input, select, button {
   display: none !important;
 }
 
+.debug-pane[data-state="minimized"] #clear-debug-btn {
+  display: none !important;
+}
+
+.debug-pane[data-state="maximized"] #clear-debug-btn {
+  display: flex !important;
+}
+
 .panel[data-state="maximized"] .panel-header {
   padding: 8px 16px;
 }

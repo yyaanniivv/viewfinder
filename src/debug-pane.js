@@ -124,6 +124,17 @@ export function initDebugPane(deps) {
   if (clearDebugBtn) {
     clearDebugBtn.addEventListener('click', clear);
   }
+  // Toggle on header click
+  const debugPaneHeader = debugPane?.querySelector('.panel-header');
+  if (debugPaneHeader) {
+    debugPaneHeader.style.cursor = 'pointer';
+    debugPaneHeader.addEventListener('click', (e) => {
+      // Don't toggle if clicking on buttons
+      if (!e.target.closest('.control-btn')) {
+        toggle();
+      }
+    });
+  }
 
   // Subscribe to debug log
   unsubscribe = subscribeToDebugLog(renderEntry);

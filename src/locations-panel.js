@@ -400,6 +400,17 @@ export function initLocationsPanel(deps) {
   if (maximizeLocationsBtn) {
     maximizeLocationsBtn.addEventListener('click', show);
   }
+  // Toggle on header click
+  const locationsPanelHeader = locationsPanel?.querySelector('.panel-header');
+  if (locationsPanelHeader) {
+    locationsPanelHeader.style.cursor = 'pointer';
+    locationsPanelHeader.addEventListener('click', (e) => {
+      // Don't toggle if clicking on buttons
+      if (!e.target.closest('.control-btn') && !e.target.closest('.add-btn')) {
+        toggle();
+      }
+    });
+  }
 
   // Initialize form
   setupLocationForm();
