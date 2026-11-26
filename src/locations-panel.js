@@ -438,5 +438,31 @@ export function initLocationsPanel(deps) {
     window.__locationsPanelAPI = api;
   }
 
+  /**
+   * Initialize the panel with locations
+   * @param {Array} locs - Locations array
+   */
+  function setLocations(locs) {
+    locations = locs;
+    renderLocationList();
+  }
+
+  /**
+   * Add locations (e.g., sample locations)
+   * @param {Array} locs - Locations to add
+   */
+  function addLocations(locs) {
+    locations = locations.concat(locs);
+    renderLocationList();
+  }
+
+  /**
+   * Get current locations
+   * @returns {Array} Locations array
+   */
+  function getLocationsArray() {
+    return locations;
+  }
+
   return api;
 }
