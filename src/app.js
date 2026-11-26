@@ -430,6 +430,7 @@ async function init() {
   window.compassUIDrawCompass = compassUI.drawCompass;
 
   debug('init() complete');
+  window.__app_initialized = true;
 }
 
 function animate() {

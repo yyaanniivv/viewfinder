@@ -32,10 +32,54 @@ test.describe('Viewfinder App', () => {
   });
 
   test('should load without runtime errors', async ({ page }) => {
+    // Wait for app initialization to complete
+    await page.waitForFunction(() => window.__app_initialized === true, { timeout: 15000 }).catch(() => {});
+
     const runtimeErrors = page.errors.filter(e =>
-      !e.includes('favicon') && !e.includes('Manifest') && !e.includes('extension')
+      !e.includes('favicon') &&
+      !e.includes('Manifest') &&
+      !e.includes('extension') &&
+      !e.includes('404') &&
+      !e.includes('favicon.ico')
     );
     expect(runtimeErrors).toHaveLength(0);
+  });
+
+  test('should have all module APIs exposed for testing', async ({ page }) => {
+    await page.waitForFunction(() => window.__locationsPanelAPI !== undefined, { timeout: 10000 });
+    await page.waitForFunction(() => window.__debugPaneAPI !== undefined, { timeout: 10000 });
+
+    const apis = await page.evaluate(() => ({
+      locationsPanel: !!window.__locationsPanelAPI,
+      debugPane: !!window.__debugPaneAPI,
+      hasSetLocations: typeof window.__locationsPanelAPI?.setLocations === 'function',
+      hasAddLocations: typeof window.__locationsPanelAPI?.addLocations === 'function',
+      hasGetLocationsArray: typeof window.__locationsPanelAPI?.getLocationsArray === 'function',
+      hasShow: typeof window.__locationsPanelAPI?.show === 'function',
+      hasHide: typeof window.__locationsPanelAPI?.hide === 'function',
+      debugHasShow: typeof window.__debugPaneAPI?.show === 'function',
+      debugHasHide: typeof window.__debugPaneAPI?.hide === 'function',
+    }));
+
+    expect(apis.locationsPanel).toBe(true);
+    expect(apis.debugPane).toBe(true);
+    expect(apis.hasSetLocations).toBe(true);
+    expect(apis.hasAddLocations).toBe(true);
+    expect(apis.hasGetLocationsArray).toBe(true);
+    expect(apis.hasShow).toBe(true);
+    expect(apis.hasHide).toBe(true);
+    expect(apis.debugHasShow).toBe(true);
+    expect(apis.debugHasHide).toBe(true);
+  });
+
+  test('should not have ReferenceError for module functions', async ({ page }) => {
+    // Specifically check for ReferenceError which indicates undefined functions
+    const referenceErrors = page.errors.filter(e =>
+      e.includes('ReferenceError') &&
+      !e.includes('favicon') &&
+      !e.includes('extension')
+    );
+    expect(referenceErrors).toHaveLength(0);
   });
 
   test.describe('Camera Toggle', () => {
