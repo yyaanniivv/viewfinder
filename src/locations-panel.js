@@ -382,8 +382,8 @@ export function initLocationsPanel(deps) {
   function loadPersistedState() {
     const showLocations = localStorage.getItem('viewfinder:showLocations');
     if (showLocations !== null) {
-      const show = showLocations === 'true';
-      if (show) {
+      const shouldShow = showLocations === 'true';
+      if (shouldShow) {
         show();
       } else {
         hide();

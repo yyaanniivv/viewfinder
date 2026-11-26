@@ -103,8 +103,8 @@ export function initDebugPane(deps) {
   function loadPersistedState() {
     const showDebug = localStorage.getItem('viewfinder:showDebug');
     if (showDebug !== null) {
-      const show = showDebug === 'true';
-      if (show) {
+      const shouldShow = showDebug === 'true';
+      if (shouldShow) {
         show();
       } else {
         hide();
