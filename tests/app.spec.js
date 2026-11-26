@@ -129,15 +129,27 @@ test.describe('Viewfinder App', () => {
     });
 
     test('maximize locations button shows panel via click', async ({ page }) => {
+      // Panel defaults to minimized (checkbox checked = visible & minimized)
+      // Maximize button is hidden when minimized, so we need to first maximize via API
+      await page.evaluate(() => {
+        if (window.__locationsPanelAPI) {
+          window.__locationsPanelAPI.show();
+        }
+      });
+
+      // Now panel is maximized, minimize button should be visible
+      const minimizeBtn = page.locator('#minimize-locations-btn');
+      await expect(minimizeBtn).toBeVisible({ timeout: 10000 });
+
+      // Click minimize to go back to minimized
+      await minimizeBtn.click();
+      await expect(page.locator('#locations-panel')).toHaveAttribute('data-state', 'minimized');
+
+      // Now maximize button should be visible
       const maximizeBtn = page.locator('#maximize-locations-btn');
       await expect(maximizeBtn).toBeVisible({ timeout: 10000 });
 
-      // Check if click handler is attached
-      const hasListener = await page.evaluate(() => {
-        const btn = document.getElementById('maximize-locations-btn');
-        return btn && btn.onclick !== null;
-      });
-
+      // Click maximize
       await maximizeBtn.click();
       await page.waitForTimeout(500);
       await expect(page.locator('#locations-panel')).toHaveAttribute('data-state', 'maximized');
@@ -148,8 +160,23 @@ test.describe('Viewfinder App', () => {
       await page.locator('#version-badge').click();
       await expect(page.locator('#settings-overlay')).toBeVisible();
 
-      await page.locator('#toggle-locations-panel').click();
-      await expect(page.locator('#locations-panel')).toHaveAttribute('data-state', 'maximized');
+      const toggle = page.locator('#toggle-locations-panel');
+      const panel = page.locator('#locations-panel');
+
+      // Default: checked = visible & minimized
+      // Uncheck to hide completely
+      const isChecked = await toggle.isChecked();
+      if (isChecked) {
+        await toggle.click();
+        await expect(toggle).not.toBeChecked();
+        await expect(panel).toBeHidden();
+      }
+
+      // Check to show & maximize
+      await toggle.click();
+      await expect(toggle).toBeChecked();
+      await expect(panel).toBeVisible();
+      await expect(panel).toHaveAttribute('data-state', 'maximized', { timeout: 5000 });
 
       await page.locator('#settings-close-btn').click();
     });
@@ -187,7 +214,12 @@ test.describe('Viewfinder App', () => {
     });
 
     test('clear debug button clears log', async ({ page }) => {
-      await page.locator('#maximize-debug-btn').click();
+      // Maximize via API first (button is hidden when minimized)
+      await page.evaluate(() => {
+        if (window.__debugPaneAPI) {
+          window.__debugPaneAPI.show();
+        }
+      });
       await page.locator('#clear-debug-btn').click();
       await page.waitForTimeout(100);
     });
@@ -196,8 +228,23 @@ test.describe('Viewfinder App', () => {
       await page.locator('#version-badge').click();
       await expect(page.locator('#settings-overlay')).toBeVisible();
 
-      await page.locator('#toggle-debug-pane').click();
-      await expect(page.locator('#debug-pane')).toHaveAttribute('data-state', 'maximized');
+      const toggle = page.locator('#toggle-debug-pane');
+      const panel = page.locator('#debug-pane');
+
+      // Default: checked = visible & minimized
+      // Uncheck to hide completely
+      const isChecked = await toggle.isChecked();
+      if (isChecked) {
+        await toggle.click();
+        await expect(toggle).not.toBeChecked();
+        await expect(panel).toBeHidden();
+      }
+
+      // Check to show & maximize
+      await toggle.click();
+      await expect(toggle).toBeChecked();
+      await expect(panel).toBeVisible();
+      await expect(panel).toHaveAttribute('data-state', 'maximized', { timeout: 5000 });
 
       await page.locator('#settings-close-btn').click();
     });
@@ -227,24 +274,44 @@ test.describe('Viewfinder App', () => {
 
   test.describe('Location List', () => {
     test('location list renders with sample locations', async ({ page }) => {
-      await page.locator('#maximize-locations-btn').click();
+      await page.evaluate(() => {
+        if (window.__locationsPanelAPI) {
+          window.__locationsPanelAPI.show();
+        }
+      });
       await expect(page.locator('#location-list')).toBeVisible();
       await expect(page.locator('.location-item').first()).toBeVisible();
     });
 
     test('location visibility toggle works', async ({ page }) => {
-      await page.locator('#maximize-locations-btn').click();
+      await page.evaluate(() => {
+        if (window.__locationsPanelAPI) {
+          window.__locationsPanelAPI.show();
+        }
+      });
       const firstItem = page.locator('.location-item').first();
       const visibilityBtn = firstItem.locator('.visibility-btn');
       const initialIcon = await visibilityBtn.textContent();
       await visibilityBtn.click();
-      await page.waitForTimeout(200);
-      const newIcon = await visibilityBtn.textContent();
+      await page.waitForTimeout(300);
+
+      // Wait for icon to change (retry a few times)
+      let newIcon = '';
+      for (let i = 0; i < 5; i++) {
+        newIcon = await visibilityBtn.textContent();
+        if (newIcon !== initialIcon) break;
+        await page.waitForTimeout(100);
+      }
+
       expect(newIcon).not.toBe(initialIcon);
     });
 
     test('add location button shows form', async ({ page }) => {
-      await page.locator('#maximize-locations-btn').click();
+      await page.evaluate(() => {
+        if (window.__locationsPanelAPI) {
+          window.__locationsPanelAPI.show();
+        }
+      });
       await page.locator('#add-location-btn').click();
       await expect(page.locator('#location-form-container')).toBeVisible();
       await expect(page.locator('#location-form-container')).toHaveCSS('display', 'block');
