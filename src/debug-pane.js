@@ -31,42 +31,67 @@ export function initDebugPane(deps) {
   let unsubscribe = null;
 
   /**
-   * Show debug pane
+   * Show debug pane (visible, uses last minimized state)
    */
   function show() {
     if (!debugPane) return;
     debugPane.style.display = 'flex';
-    debugPane.dataset.state = 'maximized';
-    if (minimizeDebugBtn) minimizeDebugBtn.style.display = 'flex';
-    if (maximizeDebugBtn) maximizeDebugBtn.style.display = 'none';
-    isMinimized = false;
+    // Restore minimized state
+    const wasMinimized = localStorage.getItem('viewfinder:debugMinimized') === 'true';
+    if (wasMinimized) {
+      minimize();
+    } else {
+      maximize();
+    }
     localStorage.setItem('viewfinder:showDebug', 'true');
     updateViewportForPanels?.();
   }
 
   /**
-   * Hide debug pane (minimize to header bar)
+   * Hide debug pane completely
    */
   function hide() {
     if (!debugPane) return;
-    // Don't set display: none - CSS handles minimized state via data-state
-    // Panel stays visible as a header bar (max-height: 42px)
-    debugPane.dataset.state = 'minimized';
-    if (minimizeDebugBtn) minimizeDebugBtn.style.display = 'none';
-    if (maximizeDebugBtn) maximizeDebugBtn.style.display = 'flex';
-    isMinimized = true;
+    debugPane.style.display = 'none';
     localStorage.setItem('viewfinder:showDebug', 'false');
     updateViewportForPanels?.();
   }
 
   /**
-   * Toggle debug pane visibility
+   * Minimize debug pane (header bar only)
+   */
+  function minimize() {
+    if (!debugPane) return;
+    debugPane.dataset.state = 'minimized';
+    if (minimizeDebugBtn) minimizeDebugBtn.style.display = 'none';
+    if (maximizeDebugBtn) maximizeDebugBtn.style.display = 'flex';
+    isMinimized = true;
+    localStorage.setItem('viewfinder:debugMinimized', 'true');
+    updateViewportForPanels?.();
+  }
+
+  /**
+   * Maximize debug pane (full content) - ensures panel is visible
+   */
+  function maximize() {
+    if (!debugPane) return;
+    debugPane.style.display = 'flex'; // Ensure visible
+    debugPane.dataset.state = 'maximized';
+    if (minimizeDebugBtn) minimizeDebugBtn.style.display = 'flex';
+    if (maximizeDebugBtn) maximizeDebugBtn.style.display = 'none';
+    isMinimized = false;
+    localStorage.setItem('viewfinder:debugMinimized', 'false');
+    updateViewportForPanels?.();
+  }
+
+  /**
+   * Toggle between minimized and maximized
    */
   function toggle() {
     if (isMinimized) {
-      show();
+      maximize();
     } else {
-      hide();
+      minimize();
     }
   }
 
@@ -110,16 +135,18 @@ export function initDebugPane(deps) {
         hide();
       }
     } else {
-      hide();
+      // Default: show and minimize (header bar visible)
+      show();
+      minimize();
     }
   }
 
   // Set up event listeners
   if (minimizeDebugBtn) {
-    minimizeDebugBtn.addEventListener('click', hide);
+    minimizeDebugBtn.addEventListener('click', minimize);
   }
   if (maximizeDebugBtn) {
-    maximizeDebugBtn.addEventListener('click', show);
+    maximizeDebugBtn.addEventListener('click', maximize);
   }
   if (clearDebugBtn) {
     clearDebugBtn.addEventListener('click', clear);
@@ -147,6 +174,8 @@ export function initDebugPane(deps) {
     show,
     hide,
     toggle,
+    maximize,
+    minimize,
     clear,
     loadPersistedState,
     isMinimized: () => isMinimized,

@@ -98,14 +98,11 @@ export function initSettingsUI(deps) {
   });
 
   // Panel toggles
-  // Settings checkbox = visibility (on = visible, off = hidden completely)
-  // When visible, panel starts maximized. Minimize/maximize buttons control header-only vs full.
+  // Settings checkbox = visibility ONLY (on = visible, off = hidden completely)
+  // Minimize/maximize state is managed by panel modules and persists separately
   elements.toggleLocationsPanel?.addEventListener('change', (e) => {
     const visible = e.target.checked;
     elements.locationsPanel.style.display = visible ? 'flex' : 'none';
-    elements.locationsPanel.dataset.state = visible ? 'maximized' : 'minimized';
-    elements.minimizeLocationsBtn.style.display = visible ? 'flex' : 'none';
-    elements.maximizeLocationsBtn.style.display = visible ? 'none' : 'flex';
     localStorage.setItem('viewfinder:showLocations', visible);
     updateViewportForPanels();
   });
@@ -113,14 +110,6 @@ export function initSettingsUI(deps) {
   elements.toggleDebugPane?.addEventListener('change', (e) => {
     const visible = e.target.checked;
     elements.debugPane.style.display = visible ? 'flex' : 'none';
-    elements.debugPane.dataset.state = visible ? 'maximized' : 'minimized';
-    if (visible) {
-      elements.minimizeDebugBtn.style.display = 'flex';
-      elements.maximizeDebugBtn.style.display = 'none';
-    } else {
-      elements.minimizeDebugBtn.style.display = 'none';
-      elements.maximizeDebugBtn.style.display = 'flex';
-    }
     localStorage.setItem('viewfinder:showDebug', visible);
     updateViewportForPanels();
   });
@@ -281,16 +270,10 @@ function loadPersistedUIState() {
   if (showLocations !== null) {
     const visible = showLocations === 'true';
     elements.locationsPanel.style.display = visible ? 'flex' : 'none';
-    elements.locationsPanel.dataset.state = visible ? 'maximized' : 'minimized';
-    elements.minimizeLocationsBtn.style.display = visible ? 'flex' : 'none';
-    elements.maximizeLocationsBtn.style.display = visible ? 'none' : 'flex';
     elements.toggleLocationsPanel.checked = visible;
   } else {
-    // Default: visible and minimized (header bar visible, checkbox on)
+    // Default: visible (checkbox on)
     elements.locationsPanel.style.display = 'flex';
-    elements.locationsPanel.dataset.state = 'minimized';
-    elements.minimizeLocationsBtn.style.display = 'none';
-    elements.maximizeLocationsBtn.style.display = 'flex';
     elements.toggleLocationsPanel.checked = true;
   }
 
@@ -298,21 +281,10 @@ function loadPersistedUIState() {
   if (showDebug !== null) {
     const visible = showDebug === 'true';
     elements.debugPane.style.display = visible ? 'flex' : 'none';
-    elements.debugPane.dataset.state = visible ? 'maximized' : 'minimized';
-    if (visible) {
-      elements.minimizeDebugBtn.style.display = 'flex';
-      elements.maximizeDebugBtn.style.display = 'none';
-    } else {
-      elements.minimizeDebugBtn.style.display = 'none';
-      elements.maximizeDebugBtn.style.display = 'flex';
-    }
     elements.toggleDebugPane.checked = visible;
   } else {
-    // Default: visible and minimized (header bar visible, checkbox on)
+    // Default: visible (checkbox on)
     elements.debugPane.style.display = 'flex';
-    elements.debugPane.dataset.state = 'minimized';
-    elements.minimizeDebugBtn.style.display = 'none';
-    elements.maximizeDebugBtn.style.display = 'flex';
     elements.toggleDebugPane.checked = true;
   }
 

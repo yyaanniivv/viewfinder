@@ -335,44 +335,71 @@ export function initLocationsPanel(deps) {
   }
 
   /**
-   * Show locations panel
+   * Show locations panel (visible, uses last minimized state)
    */
   function show() {
     if (!locationsPanel) return;
     locationsPanel.style.display = 'flex';
-    locationsPanel.dataset.state = 'maximized';
-    if (minimizeLocationsBtn) minimizeLocationsBtn.style.display = 'flex';
-    if (maximizeLocationsBtn) maximizeLocationsBtn.style.display = 'none';
-    isMinimized = false;
+    // Restore minimized state
+    const wasMinimized = localStorage.getItem('viewfinder:locationsMinimized') === 'true';
+    if (wasMinimized) {
+      minimize();
+    } else {
+      maximize();
+    }
     localStorage.setItem('viewfinder:showLocations', 'true');
     updateViewportForPanels?.();
     debug('Locations panel shown');
   }
 
   /**
-   * Hide locations panel (minimize to header bar)
+   * Hide locations panel completely
    */
   function hide() {
     if (!locationsPanel) return;
-    // Don't set display: none - CSS handles minimized state via data-state
-    // Panel stays visible as a header bar (max-height: 42px)
+    locationsPanel.style.display = 'none';
+    localStorage.setItem('viewfinder:showLocations', 'false');
+    updateViewportForPanels?.();
+    debug('Locations panel hidden');
+  }
+
+  /**
+   * Minimize locations panel (header bar only)
+   */
+  function minimize() {
+    if (!locationsPanel) return;
     locationsPanel.dataset.state = 'minimized';
     if (minimizeLocationsBtn) minimizeLocationsBtn.style.display = 'none';
     if (maximizeLocationsBtn) maximizeLocationsBtn.style.display = 'flex';
     isMinimized = true;
-    localStorage.setItem('viewfinder:showLocations', 'false');
+    localStorage.setItem('viewfinder:locationsMinimized', 'true');
     updateViewportForPanels?.();
     debug('Locations panel minimized');
   }
 
   /**
-   * Toggle locations panel visibility
+   * Maximize locations panel (full content) - ensures panel is visible
+   */
+  function maximize() {
+    if (!locationsPanel) return;
+    locationsPanel.style.display = 'flex'; // Ensure visible
+    locationsPanel.dataset.state = 'maximized';
+    if (minimizeLocationsBtn) minimizeLocationsBtn.style.display = 'flex';
+    if (maximizeLocationsBtn) maximizeLocationsBtn.style.display = 'none';
+    isMinimized = false;
+    localStorage.setItem('viewfinder:locationsMinimized', 'false');
+    updateViewportForPanels?.();
+    debug('Locations panel maximized');
+  }
+
+  /**
+   * Toggle between minimized and maximized
    */
   function toggle() {
     if (isMinimized) {
-      show();
+      maximize();
     } else {
-      hide();
+      minimize();
     }
   }
 
@@ -389,16 +416,18 @@ export function initLocationsPanel(deps) {
         hide();
       }
     } else {
-      hide();
+      // Default: show and minimize (header bar visible)
+      show();
+      minimize(); // Ensure default is minimized
     }
   }
 
   // Set up event listeners for panel controls
   if (minimizeLocationsBtn) {
-    minimizeLocationsBtn.addEventListener('click', hide);
+    minimizeLocationsBtn.addEventListener('click', minimize);
   }
   if (maximizeLocationsBtn) {
-    maximizeLocationsBtn.addEventListener('click', show);
+    maximizeLocationsBtn.addEventListener('click', maximize);
   }
   // Toggle on header click
   const locationsPanelHeader = locationsPanel?.querySelector('.panel-header');
@@ -437,6 +466,8 @@ export function initLocationsPanel(deps) {
     show,
     hide,
     toggle,
+    maximize,
+    minimize,
     setLocations,
     addLocations,
     getLocationsArray,

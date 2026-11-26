@@ -100,10 +100,10 @@ test.describe('Viewfinder App', () => {
     });
 
     test('maximize locations button shows panel via API', async ({ page }) => {
-      // Use exposed API to show panel
+      // Use exposed API to maximize panel
       await page.evaluate(() => {
         if (window.__locationsPanelAPI) {
-          window.__locationsPanelAPI.show();
+          window.__locationsPanelAPI.maximize();
         }
       });
       await expect(page.locator('#locations-panel')).toHaveAttribute('data-state', 'maximized');
@@ -111,18 +111,18 @@ test.describe('Viewfinder App', () => {
     });
 
     test('minimize locations button hides panel via API', async ({ page }) => {
-      // First show via API
+      // First maximize via API
       await page.evaluate(() => {
         if (window.__locationsPanelAPI) {
-          window.__locationsPanelAPI.show();
+          window.__locationsPanelAPI.maximize();
         }
       });
       await expect(page.locator('#locations-panel')).toHaveAttribute('data-state', 'maximized');
 
-      // Then hide via API
+      // Then minimize via API
       await page.evaluate(() => {
         if (window.__locationsPanelAPI) {
-          window.__locationsPanelAPI.hide();
+          window.__locationsPanelAPI.minimize();
         }
       });
       await expect(page.locator('#locations-panel')).toHaveAttribute('data-state', 'minimized');
@@ -130,10 +130,10 @@ test.describe('Viewfinder App', () => {
 
     test('maximize locations button shows panel via click', async ({ page }) => {
       // Panel defaults to minimized (checkbox checked = visible & minimized)
-      // Maximize button is hidden when minimized, so we need to first maximize via API
+      // Maximize via API first
       await page.evaluate(() => {
         if (window.__locationsPanelAPI) {
-          window.__locationsPanelAPI.show();
+          window.__locationsPanelAPI.maximize();
         }
       });
 
@@ -172,11 +172,12 @@ test.describe('Viewfinder App', () => {
         await expect(panel).toBeHidden();
       }
 
-      // Check to show & maximize
+      // Check to show - should remember last state (minimized)
       await toggle.click();
       await expect(toggle).toBeChecked();
       await expect(panel).toBeVisible();
-      await expect(panel).toHaveAttribute('data-state', 'maximized', { timeout: 5000 });
+      // Should remember last minimized state, not auto-maximize
+      await expect(panel).toHaveAttribute('data-state', 'minimized', { timeout: 5000 });
 
       await page.locator('#settings-close-btn').click();
     });
@@ -190,7 +191,7 @@ test.describe('Viewfinder App', () => {
     test('maximize debug button shows pane via API', async ({ page }) => {
       await page.evaluate(() => {
         if (window.__debugPaneAPI) {
-          window.__debugPaneAPI.show();
+          window.__debugPaneAPI.maximize();
         }
       });
       await expect(page.locator('#debug-pane')).toHaveAttribute('data-state', 'maximized');
@@ -200,14 +201,14 @@ test.describe('Viewfinder App', () => {
     test('minimize debug button hides pane via API', async ({ page }) => {
       await page.evaluate(() => {
         if (window.__debugPaneAPI) {
-          window.__debugPaneAPI.show();
+          window.__debugPaneAPI.maximize();
         }
       });
       await expect(page.locator('#debug-pane')).toHaveAttribute('data-state', 'maximized');
 
       await page.evaluate(() => {
         if (window.__debugPaneAPI) {
-          window.__debugPaneAPI.hide();
+          window.__debugPaneAPI.minimize();
         }
       });
       await expect(page.locator('#debug-pane')).toHaveAttribute('data-state', 'minimized');
@@ -217,7 +218,7 @@ test.describe('Viewfinder App', () => {
       // Maximize via API first (button is hidden when minimized)
       await page.evaluate(() => {
         if (window.__debugPaneAPI) {
-          window.__debugPaneAPI.show();
+          window.__debugPaneAPI.maximize();
         }
       });
       await page.locator('#clear-debug-btn').click();
@@ -240,11 +241,12 @@ test.describe('Viewfinder App', () => {
         await expect(panel).toBeHidden();
       }
 
-      // Check to show & maximize
+      // Check to show - should remember last state (minimized)
       await toggle.click();
       await expect(toggle).toBeChecked();
       await expect(panel).toBeVisible();
-      await expect(panel).toHaveAttribute('data-state', 'maximized', { timeout: 5000 });
+      // Should remember last minimized state, not auto-maximize
+      await expect(panel).toHaveAttribute('data-state', 'minimized', { timeout: 5000 });
 
       await page.locator('#settings-close-btn').click();
     });
@@ -276,7 +278,7 @@ test.describe('Viewfinder App', () => {
     test('location list renders with sample locations', async ({ page }) => {
       await page.evaluate(() => {
         if (window.__locationsPanelAPI) {
-          window.__locationsPanelAPI.show();
+          window.__locationsPanelAPI.maximize();
         }
       });
       await expect(page.locator('#location-list')).toBeVisible();
@@ -286,7 +288,7 @@ test.describe('Viewfinder App', () => {
     test('location visibility toggle works', async ({ page }) => {
       await page.evaluate(() => {
         if (window.__locationsPanelAPI) {
-          window.__locationsPanelAPI.show();
+          window.__locationsPanelAPI.maximize();
         }
       });
       const firstItem = page.locator('.location-item').first();
@@ -309,7 +311,7 @@ test.describe('Viewfinder App', () => {
     test('add location button shows form', async ({ page }) => {
       await page.evaluate(() => {
         if (window.__locationsPanelAPI) {
-          window.__locationsPanelAPI.show();
+          window.__locationsPanelAPI.maximize();
         }
       });
       await page.locator('#add-location-btn').click();
