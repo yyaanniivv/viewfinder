@@ -98,9 +98,10 @@ export function initSettingsUI(deps) {
   });
 
   // Panel toggles
+  // Note: "show" means maximized (expanded). When unchecked, panel is minimized (header bar visible)
   elements.toggleLocationsPanel?.addEventListener('change', (e) => {
     const show = e.target.checked;
-    elements.locationsPanel.style.display = show ? 'flex' : 'none';
+    elements.locationsPanel.style.display = 'flex'; // Always visible (minimized or maximized)
     elements.locationsPanel.dataset.state = show ? 'maximized' : 'minimized';
     elements.minimizeLocationsBtn.style.display = show ? 'flex' : 'none';
     elements.maximizeLocationsBtn.style.display = show ? 'none' : 'flex';
@@ -108,9 +109,11 @@ export function initSettingsUI(deps) {
     updateViewportForPanels();
   });
 
+  // Panel toggles
+  // Note: "show" means maximized (expanded). When unchecked, panel is minimized (header bar visible)
   elements.toggleDebugPane?.addEventListener('change', (e) => {
     const show = e.target.checked;
-    elements.debugPane.style.display = show ? 'flex' : 'none';
+    elements.debugPane.style.display = 'flex'; // Always visible (minimized or maximized)
     elements.debugPane.dataset.state = show ? 'maximized' : 'minimized';
     if (show) {
       elements.minimizeDebugBtn.style.display = 'flex';
@@ -278,24 +281,37 @@ function loadPersistedUIState() {
   const showLocations = localStorage.getItem('viewfinder:showLocations');
   if (showLocations !== null) {
     const show = showLocations === 'true';
-    elements.locationsPanel.style.display = show ? 'flex' : 'none';
+    elements.locationsPanel.style.display = 'flex';
     elements.locationsPanel.dataset.state = show ? 'maximized' : 'minimized';
+    elements.minimizeLocationsBtn.style.display = show ? 'flex' : 'none';
+    elements.maximizeLocationsBtn.style.display = show ? 'none' : 'flex';
     elements.toggleLocationsPanel.checked = show;
   } else {
     elements.locationsPanel.style.display = 'flex';
     elements.locationsPanel.dataset.state = 'minimized';
+    elements.minimizeLocationsBtn.style.display = 'none';
+    elements.maximizeLocationsBtn.style.display = 'flex';
     elements.toggleLocationsPanel.checked = false;
   }
 
   const showDebug = localStorage.getItem('viewfinder:showDebug');
   if (showDebug !== null) {
     const show = showDebug === 'true';
-    elements.debugPane.style.display = show ? 'flex' : 'none';
+    elements.debugPane.style.display = 'flex';
     elements.debugPane.dataset.state = show ? 'maximized' : 'minimized';
+    if (show) {
+      elements.minimizeDebugBtn.style.display = 'flex';
+      elements.maximizeDebugBtn.style.display = 'none';
+    } else {
+      elements.minimizeDebugBtn.style.display = 'none';
+      elements.maximizeDebugBtn.style.display = 'flex';
+    }
     elements.toggleDebugPane.checked = show;
   } else {
     elements.debugPane.style.display = 'flex';
     elements.debugPane.dataset.state = 'minimized';
+    elements.minimizeDebugBtn.style.display = 'none';
+    elements.maximizeDebugBtn.style.display = 'flex';
     elements.toggleDebugPane.checked = false;
   }
 
