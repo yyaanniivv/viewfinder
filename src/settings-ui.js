@@ -98,28 +98,19 @@ export function initSettingsUI(deps) {
   });
 
   // Panel toggles
+  // Settings checkbox = visibility ONLY (on = visible, off = hidden completely)
+  // Minimize/maximize state is managed by panel modules and persists separately
   elements.toggleLocationsPanel?.addEventListener('change', (e) => {
-    const show = e.target.checked;
-    elements.locationsPanel.style.display = show ? 'flex' : 'none';
-    elements.locationsPanel.dataset.state = show ? 'maximized' : 'minimized';
-    elements.minimizeLocationsBtn.style.display = show ? 'flex' : 'none';
-    elements.maximizeLocationsBtn.style.display = show ? 'none' : 'flex';
-    localStorage.setItem('viewfinder:showLocations', show);
+    const visible = e.target.checked;
+    elements.locationsPanel.style.display = visible ? 'flex' : 'none';
+    localStorage.setItem('viewfinder:showLocations', visible);
     updateViewportForPanels();
   });
 
   elements.toggleDebugPane?.addEventListener('change', (e) => {
-    const show = e.target.checked;
-    elements.debugPane.style.display = show ? 'flex' : 'none';
-    elements.debugPane.dataset.state = show ? 'maximized' : 'minimized';
-    if (show) {
-      elements.minimizeDebugBtn.style.display = 'flex';
-      elements.maximizeDebugBtn.style.display = 'none';
-    } else {
-      elements.minimizeDebugBtn.style.display = 'none';
-      elements.maximizeDebugBtn.style.display = 'flex';
-    }
-    localStorage.setItem('viewfinder:showDebug', show);
+    const visible = e.target.checked;
+    elements.debugPane.style.display = visible ? 'flex' : 'none';
+    localStorage.setItem('viewfinder:showDebug', visible);
     updateViewportForPanels();
   });
 
@@ -277,26 +268,24 @@ function loadPersistedUIState() {
 
   const showLocations = localStorage.getItem('viewfinder:showLocations');
   if (showLocations !== null) {
-    const show = showLocations === 'true';
-    elements.locationsPanel.style.display = show ? 'flex' : 'none';
-    elements.locationsPanel.dataset.state = show ? 'maximized' : 'minimized';
-    elements.toggleLocationsPanel.checked = show;
+    const visible = showLocations === 'true';
+    elements.locationsPanel.style.display = visible ? 'flex' : 'none';
+    elements.toggleLocationsPanel.checked = visible;
   } else {
+    // Default: visible (checkbox on)
     elements.locationsPanel.style.display = 'flex';
-    elements.locationsPanel.dataset.state = 'minimized';
-    elements.toggleLocationsPanel.checked = false;
+    elements.toggleLocationsPanel.checked = true;
   }
 
   const showDebug = localStorage.getItem('viewfinder:showDebug');
   if (showDebug !== null) {
-    const show = showDebug === 'true';
-    elements.debugPane.style.display = show ? 'flex' : 'none';
-    elements.debugPane.dataset.state = show ? 'maximized' : 'minimized';
-    elements.toggleDebugPane.checked = show;
+    const visible = showDebug === 'true';
+    elements.debugPane.style.display = visible ? 'flex' : 'none';
+    elements.toggleDebugPane.checked = visible;
   } else {
+    // Default: visible (checkbox on)
     elements.debugPane.style.display = 'flex';
-    elements.debugPane.dataset.state = 'minimized';
-    elements.toggleDebugPane.checked = false;
+    elements.toggleDebugPane.checked = true;
   }
 
   const showCompass = localStorage.getItem('viewfinder:showCompass');

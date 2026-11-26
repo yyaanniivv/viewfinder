@@ -30,12 +30,23 @@ import { initSettingsUI } from './settings-ui.js';
 import { initGPSUI } from './gps-ui.js';
 import { initCompassUI } from './compass-ui.js';
 import { initCameraControls } from './camera-controls.js';
+import { initLocationsPanel } from './locations-panel.js';
+import { initDebugPane } from './debug-pane.js';
+import { initToasts } from './toasts.js';
+import { debugLog, debug } from './debug-log.js';
 
 const video = document.getElementById('camera');
 const canvas = document.getElementById('overlay');
 const cameraViewport = document.getElementById('camera-viewport');
 const compassBtn = document.getElementById('compass-btn');
 const locationsPanel = document.getElementById('locations-panel');
+const locationList = document.getElementById('location-list');
+const locationForm = document.getElementById('location-form');
+const locationFormContainer = document.getElementById('location-form-container');
+const addLocationBtn = document.getElementById('add-location-btn');
+const locCancelBtn = document.getElementById('loc-cancel-btn');
+const locColorSwatches = document.getElementById('loc-color-swatches');
+const locTypeSelect = document.getElementById('loc-type');
 const statusGPS = document.getElementById('status-gps');
 const locationCountEl = document.getElementById('location-count');
 const debugPane = document.getElementById('debug-pane');
@@ -104,6 +115,7 @@ const zoomCycleEnabledCheckbox = document.getElementById('zoom-cycle-enabled');
 
 let compassModule = null;
 let gpsModule = null;
+let locationsPanelAPI = null;
 
 let userPosition = null;
 let gpsAccuracy = null;
@@ -111,7 +123,6 @@ let compassAlpha = null;
 let compassAbsolute = false;
 let headingOffset = 0;
 let isCalibrated = false;
-let locations = [];
 let trackedLocationId = null;
 let selectedCalibrationLocation = null;
 let overlay = null;
@@ -132,17 +143,6 @@ let cleanWheelEnabled = true;
 
 let panelsVisible = false;
 let compassMode = 'fixed'; // 'fixed' = N/E/S/W fixed, pointer rotates | 'dynamic' = wheel spins, pointer fixed at top
-
-function debug(msg) {
-  console.log('[App]', msg);
-  if (debugContent) {
-    const timestamp = new Date().toLocaleTimeString();
-    const line = document.createElement('div');
-    line.textContent = `[${timestamp}] ${msg}`;
-    debugContent.appendChild(line);
-    debugContent.scrollTop = debugContent.scrollHeight;
-  }
-}
 
 /**
  * Update camera viewport for bottom panels
@@ -167,9 +167,18 @@ function updateViewportForPanels() {
 async function init() {
   console.log('[App] init() started');
 
-  clearDebugBtn?.addEventListener('click', () => {
-    if (debugContent) debugContent.innerHTML = '';
+  // Initialize debug pane first (it subscribes to debug-log internally)
+  const debugPaneAPI = initDebugPane({
+    debugPane,
+    debugContent,
+    minimizeDebugBtn,
+    maximizeDebugBtn,
+    clearDebugBtn,
+    updateViewportForPanels,
   });
+
+  // Initialize toasts
+  const toasts = initToasts({ debug: (msg) => debugLog.log(msg, 'info') });
 
   debug('Starting init...');
 
@@ -179,29 +188,41 @@ async function init() {
     versionBadge.textContent = version;
   }
 
-  const colorSwatches = document.getElementById('loc-color-swatches');
-  if (colorSwatches) {
-    colorSwatches.innerHTML = LOCATION_COLORS.map(c =>
-      `<button type="button" class="color-swatch" data-color="${c}" style="background: ${c}" aria-label="Color ${c}"></button>`
-    ).join('');
-  }
-  const typeSelect = document.getElementById('loc-type');
-  if (typeSelect) {
-    typeSelect.innerHTML = LOCATION_TYPES.map(t =>
-      `<option value="${t.value}">${t.emoji} ${t.label}</option>`
-    ).join('');
-  }
+  // Initialize locations panel
+  locationsPanelAPI = initLocationsPanel({
+    locationsPanel,
+    locationList,
+    locationForm,
+    locationFormContainer,
+    addLocationBtn,
+    locCancelBtn,
+    locColorSwatches,
+    locTypeSelect,
+    locationCountEl,
+    minimizeLocationsBtn,
+    maximizeLocationsBtn,
+    debug: (msg) => debugLog.log(msg, 'info'),
+    updateViewportForPanels,
+    onTrackedLocationChange: (id) => {
+      trackedLocationId = id;
+      gpsUI.setTrackedLocationId(id);
+    },
+    getUserPosition: () => userPosition,
+  });
 
+  // Load locations
   try {
-    locations = getLocations();
-    debug(`Loaded ${locations.length} locations from localStorage`);
-    if (locations.length === 0) {
+    const locs = getLocations();
+    debug(`Loaded ${locs.length} locations from localStorage`);
+    if (locs.length === 0) {
       debug('No locations, loading samples...');
-      locations = SAMPLE_LOCATIONS.map(l => ({ ...l, id: generateId() }));
-      saveLocations(locations);
-      debug(`Saved ${locations.length} sample locations`);
+      const sampleLocs = SAMPLE_LOCATIONS.map(l => ({ ...l, id: generateId() }));
+      saveLocations(sampleLocs);
+      debug(`Saved ${sampleLocs.length} sample locations`);
+      locationsPanelAPI.addLocations(sampleLocs);
+    } else {
+      locationsPanelAPI.setLocations(locs);
     }
-    renderLocationList();
     debug('Location list rendered');
   } catch (e) {
     debug('Location error: ' + e.message);
@@ -250,7 +271,7 @@ async function init() {
     settingsCloseBtn,
     settingsVersion,
     versionBadge,
-    debug,
+    debug: (msg) => debugLog.log(msg, 'info'),
     updateViewportForPanels,
     state,
   });
@@ -261,8 +282,8 @@ async function init() {
     cameraToggleBtn,
     zoomIndicator,
     lensSwitchBtn,
-    debug,
-    showError,
+    debug: (msg) => debugLog.log(msg, 'info'),
+    showError: toasts.showError,
     state,
   });
 
@@ -276,7 +297,7 @@ async function init() {
     }
   };
   state.onLevelTagChange = () => {
-    updateStatus();
+    gpsUI.updateStatus();
   };
 
   // Sync modules with state after they're initialized
@@ -311,8 +332,8 @@ async function init() {
     gpsAccEl,
     gpsCompassEl,
     gpsBearingEl,
-    debug,
-    showError,
+    debug: (msg) => debugLog.log(msg, 'info'),
+    showError: toasts.showError,
     // Callbacks to update app.js state
     onUserPositionChange: (pos) => { userPosition = pos; },
     onGpsAccuracyChange: (acc) => { gpsAccuracy = acc; },
@@ -327,8 +348,8 @@ async function init() {
     compassCanvas: document.getElementById('compass-canvas'),
     calibrationOverlay,
     compassBtn,
-    debug,
-    showError,
+    debug: (msg) => debugLog.log(msg, 'info'),
+    showError: toasts.showError,
     // Callbacks to update app.js state
     onCompassAlphaChange: (alpha) => { compassAlpha = alpha; },
     onCompassAbsoluteChange: (abs) => { compassAbsolute = abs; },
@@ -376,7 +397,7 @@ async function init() {
 
   try {
     overlay = new Overlay(canvas, {
-      locations,
+      locations: locationsPanelAPI.getLocationsArray(),
       userPosition: null,
       compassHeading: 0,
       headingOffset: 0,
@@ -402,19 +423,20 @@ async function init() {
   });
 
   // Pass locations to modules (they need reference for various operations)
-  gpsUI.setLocations(locations);
-  compassUI.setLocations(locations);
+  gpsUI.setLocations(locationsPanelAPI.getLocationsArray());
+  compassUI.setLocations(locationsPanelAPI.getLocationsArray());
 
   // Store compassUI drawCompass reference for animate()
   window.compassUIDrawCompass = compassUI.drawCompass;
 
   debug('init() complete');
+  window.__app_initialized = true;
 }
 
 function animate() {
-  if (overlay) {
+  if (overlay && locationsPanelAPI) {
     overlay.update({
-      locations,
+      locations: locationsPanelAPI.getLocationsArray(),
       userPosition,
       compassHeading: compassAlpha || 0,
       headingOffset,
@@ -436,272 +458,7 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-function showError(msg, isError = true) {
-  const toast = document.createElement('div');
-  toast.className = isError ? 'error-toast' : 'info-toast';
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
-}
-
-// Location List UI
-function updateLocationCount() {
-  if (locationCountEl) {
-    const visible = locations.filter(l => !l.hidden).length;
-    const total = locations.length;
-    locationCountEl.textContent = `${visible}/${total}`;
-  }
-}
-
-function renderLocationList() {
-  updateLocationCount();
-
-  const list = document.getElementById('location-list');
-  if (!list) return;
-
-  if (locations.length === 0) {
-    list.innerHTML = '<p class="empty">No locations. Tap "Add Location" to start.</p>';
-    return;
-  }
-
-  renderEyeList(list);
-}
-
-/**
- * Picker mode A: every item has an eye toggle. Hidden items render dimmed
- * in place, under a "Hidden" subheader. Simple, no reordering needed.
- */
-function renderEyeList(list) {
-  const shown = locations.filter(l => !l.hidden);
-  const hidden = locations.filter(l => l.hidden);
-
-  const itemHTML = (loc, isHidden) => `
-    <div class="location-item ${isHidden ? 'location-hidden' : ''}" data-id="${loc.id}">
-      <div class="location-info">
-        <span class="location-color" style="background: ${loc.color}"></span>
-        <div class="location-details">
-          <span class="location-name">${loc.name}</span>
-          <span class="location-meta">
-            ${loc.type ? `<span class="type-emoji">${getTypeEmoji(loc.type)}</span>` : ''}
-            ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}
-          </span>
-        </div>
-      </div>
-      <div class="location-actions">
-        <button class="icon-btn visibility-btn" data-id="${loc.id}" aria-label="${isHidden ? 'Show on overlay' : 'Hide from overlay'}">${isHidden ? '🚫' : '👁️'}</button>
-        <button class="icon-btn edit-btn" data-id="${loc.id}">✏️</button>
-        <button class="icon-btn delete-btn" data-id="${loc.id}">🗑️</button>
-      </div>
-    </div>
-  `;
-
-  let html = '';
-  if (hidden.length > 0) {
-    html += `<div class="picker-section-label">Visible (${shown.length})</div>`;
-    html += shown.map(l => itemHTML(l, false)).join('');
-    html += `<div class="picker-section-label">Hidden (${hidden.length})</div>`;
-    html += hidden.map(l => itemHTML(l, true)).join('');
-  } else {
-    html += shown.map(l => itemHTML(l, false)).join('');
-  }
-  list.innerHTML = html;
-
-  attachLocationListEvents(list);
-}
-
-function attachLocationListEvents(list) {
-  list.querySelectorAll('.visibility-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleLocationHidden(e.currentTarget.dataset.id);
-    });
-  });
-  list.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      editLocation(e.currentTarget.dataset.id);
-    });
-  });
-  list.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteLocation(e.currentTarget.dataset.id);
-    });
-  });
-  list.querySelectorAll('.location-info').forEach(info => {
-    info.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const id = e.currentTarget.closest('.location-item').dataset.id;
-      selectLocation(id);
-    });
-  });
-}
-
-function toggleLocationHidden(id) {
-  const loc = locations.find(l => l.id === id);
-  if (!loc) return;
-  setHidden(id, !loc.hidden);
-}
-
-function setHidden(id, isHidden) {
-  const loc = locations.find(l => l.id === id);
-  if (!loc || loc.hidden === isHidden) return;
-  loc.hidden = isHidden;
-  saveLocations(locations);
-  renderLocationList();
-  debug(`${loc.name} ${isHidden ? 'hidden from' : 'shown on'} overlay`);
-}
-
-function editLocation(id) {
-  const loc = locations.find(l => l.id === id);
-  if (!loc) return;
-
-  const form = document.getElementById('location-form');
-  form.dataset.editId = id;
-  document.getElementById('loc-name').value = loc.name;
-  document.getElementById('loc-lat').value = loc.lat;
-  document.getElementById('loc-lon').value = loc.lon;
-  document.getElementById('loc-type').value = loc.type || 'custom';
-
-  showLocationForm();
-  markSelectedSwatch(loc.color);
-}
-
-function deleteLocation(id) {
-  if (confirm('Delete this location?')) {
-    locations = locations.filter(l => l.id !== id);
-    saveLocations(locations);
-    renderLocationList();
-    updateLocationCount();
-  }
-}
-
-function selectLocation(id) {
-  const loc = locations.find(l => l.id === id);
-  if (!loc) return;
-
-  // Track the selected location (bearing shown in Current Location overlay)
-  trackedLocationId = loc.id;
-  gpsUI.setTrackedLocationId(loc.id);
-
-  // Show toast
-  showLocationToast(loc);
-}
-
-function showLocationToast(loc) {
-  let toast = document.querySelector('.location-toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.className = 'location-toast';
-    document.body.appendChild(toast);
-  }
-
-  const dist = userPosition ? formatDistance(
-    haversineDistance(userPosition, loc)
-  ) : '—';
-
-  toast.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <span style="width: 10px; height: 10px; border-radius: 50%; background: ${loc.color}"></span>
-      <strong>${loc.name}</strong>
-      ${loc.type ? `<span style="font-size: 12px; color: #888; text-transform: capitalize">• ${loc.type}</span>` : ''}
-    </div>
-    <div style="font-size: 13px; color: #BBB;">${dist} away</div>
-    <button class="toast-close">×</button>
-  `;
-
-  toast.querySelector('.toast-close').onclick = () => toast.remove();
-}
-
-function showLocationForm() {
-  document.getElementById('location-form-container').style.display = 'block';
-}
-
-function hideLocationForm() {
-  document.getElementById('location-form-container').style.display = 'none';
-  document.getElementById('location-form').reset();
-  delete document.getElementById('location-form').dataset.editId;
-}
-
-function setupLocationForm() {
-  const form = document.getElementById('location-form');
-  const cancelBtn = document.getElementById('loc-cancel-btn');
-  const addBtn = document.getElementById('add-location-btn');
-  const colorSwatches = document.getElementById('loc-color-swatches');
-
-  // Swatch picker: click sets the hidden color input and highlights the
-  // selected swatch
-  colorSwatches?.addEventListener('click', (e) => {
-    const btn = e.target.closest('.color-swatch');
-    if (!btn) return;
-    document.getElementById('loc-color').value = btn.dataset.color;
-    colorSwatches.querySelectorAll('.color-swatch').forEach(b =>
-      b.classList.toggle('selected', b === btn)
-    );
-  });
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const editId = form.dataset.editId;
-
-    const lat = parseFloat(document.getElementById('loc-lat').value);
-    const lon = parseFloat(document.getElementById('loc-lon').value);
-
-    if (isNaN(lat) || isNaN(lon)) {
-      alert('Invalid coordinates');
-      return;
-    }
-
-    let color = document.getElementById('loc-color').value;
-    if (!color) {
-      // Default for a new location opened without swatch selection
-      color = getNextColor(locations);
-    }
-
-    const locData = {
-      name: document.getElementById('loc-name').value.trim(),
-      lat,
-      lon,
-      color,
-      type: document.getElementById('loc-type').value,
-    };
-
-    if (editId) {
-      const idx = locations.findIndex(l => l.id === editId);
-      if (idx >= 0) {
-        locations[idx] = { ...locations[idx], ...locData };
-      }
-    } else {
-      locData.id = generateId();
-      locations.push(locData);
-    }
-
-    saveLocations(locations);
-    renderLocationList();
-    updateLocationCount();
-    hideLocationForm();
-  });
-
-  cancelBtn?.addEventListener('click', hideLocationForm);
-  addBtn?.addEventListener('click', () => {
-    form.reset();
-    delete form.dataset.editId;
-    showLocationForm();
-    // Highlight the suggested color for the new location
-    markSelectedSwatch(getNextColor(locations));
-  });
-}
-
-/** Highlight the swatch matching `color` (call after the form is visible). */
-function markSelectedSwatch(color) {
-  document.getElementById('loc-color').value = color;
-  document.querySelectorAll('#loc-color-swatches .color-swatch').forEach(b =>
-    b.classList.toggle('selected', b.dataset.color === color)
-  );
-}
-
 // Initialize everything when DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-  setupLocationForm();
   init();
 });
